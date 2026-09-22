@@ -279,7 +279,7 @@ window.addEventListener("error",function(e){
 <p class="muted">Alle Geräte öffnen dieselbe Seite. Jan erstellt den Raum, die Kapitäne treten mit dem Raumcode bei.</p>
 <div class="status" style="border:3px solid #118ab2;background:#eefaff;margin-bottom:12px">
 <b style="font-size:20px">🔒 Klemm & Team-Auslosung</b><br>
-Der Klemm-Status ist passwortgeschützt. Der Absprung startet danach im Spielleiterbereich.
+Der Klemm-Status ist passwortgeschützt. Die Team-Auslosung „Drei Türen“ startet danach im Spielleiterbereich.
 <div class="grid" style="margin-top:10px">
 <button id="setupKlemmYes" class="good">✓ KLEMM DABEI</button>
 <button id="setupKlemmNo" class="danger">✕ KLEMM FÄLLT AUS</button>
@@ -308,7 +308,7 @@ Der Klemm-Status ist passwortgeschützt. Der Absprung startet danach im Spiellei
 <section id="hostView" class="hide">
 <div class="card"><div class="muted">Raumcode</div><div id="roomCode" class="big code"></div><div id="connections"></div></div>
 <div class="tabs">
-<button data-mode="setup" style="background:#17324d;color:#fff">⚙️ REISE-SETUP</button><button data-mode="absprung" style="background:#118ab2;color:#fff">🪂 ABSPRUNG</button><button data-mode="quiz">Adria-Abitur</button>
+<button data-mode="setup" style="background:#17324d;color:#fff">⚙️ REISE-SETUP</button><button data-mode="doors" style="background:#118ab2;color:#fff">🚪 DREI TÜREN</button><button data-mode="quiz">Adria-Abitur</button>
 <button data-mode="estimate">Dicht daneben</button>
 <button data-mode="category">Listen-Lotto</button><button data-mode="higherlower">Higher or Lower</button><button data-mode="higherlowerteam">Higher or Lower · TEAM</button><button data-mode="higherlowerbed">Higher or Lower - Bedtime Story</button><button data-mode="emoji">Emoji-Eskalation</button><button data-mode="transfertinder">⚽ Transfer-Tinder</button><button data-mode="quotenkoma" style="background:#3b0066;color:#fff;border-color:#7b2cbf">🎰 QUOTEN-KOMA</button><button data-mode="buzzer">Buzzer</button><button data-mode="tourpics">Blackout-Bilder</button><button data-mode="zimmer" class="good" style="font-size:17px;border:3px solid #0d6639">🏨 BETTGEFLÜSTER – ZIMMER AUSLOSEN</button>
 </div>
@@ -383,6 +383,14 @@ function setKlemmDabeiProtected(v){
   setKlemmDabei(v);
 }
 function activeCount(n){ return KLEMM_DABEI ? n : n-1; }
+function teamPlayerCount(){ return KLEMM_DABEI ? 10 : 9; }
+function travelerCount(){ return KLEMM_DABEI ? 11 : 10; }
+function teamSizeText(){ return KLEMM_DABEI ? "4 / 3 / 3" : "3 / 3 / 3"; }
+function rosterRuleText(){
+  return KLEMM_DABEI
+    ? "Klemm ist dabei: 10 Teamspieler, Teamgrößen 4 / 3 / 3."
+    : "Klemm fällt aus: 9 Teamspieler, alle drei Teams haben je 3 Spieler.";
+}
 
 let peer=null, conns={}, conn=null, role=null, room=null, modeName="setup";
 // v29 Higher or Lower – eigenständiges Einzelspiel innerhalb der Haupt-App
@@ -1139,7 +1147,7 @@ const TOUR_ROUNDS=[{"place":"Stuttgart","year":2023,"img":"tour_12.jpg"},{"place
 
 let tourIdx=0,tourPhase="idle",tourScores={},tourLocationWinner=null,tourStandingsShown=false;
 
-// Bettgeflüster: 11 Reisende; Kay und Timo fahren nicht mit. Zwei vor Ort wählbare Zimmer-Varianten.
+// Bettgeflüster: Reisendenzahl hängt vom Klemm-Schalter ab; Zimmerlogik wird dynamisch gewählt.
 const ZG_PLAYERS=["Kevin","Markus","Stefan","Michel","Patrick","Mario","Andre","Klemm","Swen"].filter(n=>KLEMM_DABEI||n!=="Klemm");
 const ZG_ROUNDS=[
   {title:"Runde 1 · Higher or Lower – Bedtime Stories",question:"Alle starten mit 3 Leben. Falsch oder keine Antwort = 1 Leben weg. Gespielt wird bis genau ein Sieger übrig bleibt."},
@@ -1269,7 +1277,12 @@ function onHostMessage(m,c){
   if(m.type==="hlChoice" && modeName==="higherlower") { hlChoose(m.choice,m.name); return; }
   if(m.type==="hltChoice" && modeName==="higherlowerteam") { hltChoose(m.choice,m.team); return; }
   if(m.type==="hlbChoice" && modeName==="higherlowerbed") { hlbChoose(m.choice,m.name); return; }
-  if(m.type==="join"){conns[m.role]=c; refreshConnections(); if(modeName==="quotenkoma") setTimeout(()=>qkSendTo(m.role),50);}
+  if(m.type==="join"){
+    conns[m.role]=c; refreshConnections();
+    if(modeName==="quotenkoma") setTimeout(()=>qkSendTo(m.role),50);
+    if(modeName==="doors") setTimeout(()=>{try{c.send(doorState())}catch(e){}},50);
+  }
+  if(m.type==="doorOpen" && modeName==="doors"){doorOpen(m.name,Number(m.door));return;}
   if(m.type==="tourBuzz" && modeName==="tourpics" && buzzOpen && ["team1","team2","team3"].includes(m.team) && !buzzOrder.includes(m.team)){
     buzzOrder.push(m.team); if(buzzOrder.length===1){buzzAnswerIndex=0;startBuzzAnswerTimer();}
     tourCaptainBuzzState(true); if(conns.screen)conns.screen.send(buzzBoardMessage()); renderHost(); return;
@@ -1329,6 +1342,45 @@ function refreshConnections(){
 }
 function sendAll(msg){Object.values(conns).forEach(c=>{try{c.send(msg)}catch(e){}});}
 function onClientMessage(m){
+  if(m&&m.type==="doorState"){
+    clearInterval(timerInt);
+    const results=m.results||[];
+    const last=results.length?results[results.length-1]:null;
+    const resultRows=["team1","team2","team3"].map(t=>{
+      const ns=results.filter(x=>x.team===t).map(x=>x.name);
+      return "<div class='status'><b>"+(t==="team1"?"TEAM 1":t==="team2"?"TEAM 2":"TEAM 3")+"</b><br>"+(ns.length?ns.join(" · "):"—")+"</div>";
+    }).join("");
+    const reveal=(m.phase==="reveal"&&last)
+      ?"<div class='status ok' style='font-size:32px;text-align:center;padding:20px'><b>"+last.name+" → "+(last.team==="team1"?"TEAM 1":last.team==="team2"?"TEAM 2":"TEAM 3")+"</b></div>"
+      :"";
+    if(role&&role.startsWith("player:")){
+      const me=role.slice(7);
+      $("buzzBtn").classList.add("hide");$("playerTourBox").classList.add("hide");$("playerBuzzBoard").classList.remove("hide");
+      let body="<h2>🚪 DREI TÜREN</h2>"+reveal;
+      if(m.phase==="idle") body+="<div class='status'>Warte, bis Jan die Auslosung startet.</div>";
+      else if(m.phase==="done") body+="<div class='status ok'><b>🏁 Auslosung beendet.</b></div>";
+      else if(m.phase==="turn"&&m.current===me){
+        body+="<div class='status ok' style='font-size:22px'><b>"+me+", du bist dran!</b><br>Öffne eine Tür.</div>"+
+          "<div class='grid' style='grid-template-columns:repeat(3,1fr);gap:10px'>"+
+          [1,2,3].map(n=>"<button class='doorChoice good' data-door='"+n+"' style='min-height:150px;font-size:24px'>🚪<br>TOR "+n+"</button>").join("")+"</div>";
+      } else if(m.phase==="turn"){
+        body+="<div class='status'><b>"+m.current+" ist jetzt dran.</b><br>Warte, bis die Tür geöffnet wurde.</div>";
+      } else if(m.phase==="reveal"){
+        body+="<div class='status'>Gleich ist der nächste Spieler dran …</div>";
+      }
+      body+="<div class='grid' style='margin-top:12px'>"+resultRows+"</div>";
+      $("playerAlert").className="status";$("playerAlert").innerHTML=body;$("playerRanking").innerHTML="";
+      document.querySelectorAll(".doorChoice").forEach(b=>b.onclick=()=>{document.querySelectorAll(".doorChoice").forEach(x=>x.disabled=true);conn.send({type:"doorOpen",name:me,door:Number(b.dataset.door)});});
+    } else if(role==="screen"){
+      $("screenTitle").textContent="🚪 DREI TÜREN";
+      $("screenTimer").textContent="";
+      $("screenStatus").innerHTML=reveal+(m.phase==="turn"?"<div class='status'><b>"+m.current+" ist jetzt dran.</b></div>":"")+"<div class='grid'>"+resultRows+"</div>";
+    } else if(role&&role.startsWith("team")){
+      $("capTimer").textContent="";
+      $("capGame").innerHTML="<h2>🚪 DREI TÜREN</h2>"+reveal+(m.phase==="turn"?"<div class='status'><b>"+m.current+" ist jetzt dran.</b></div>":"")+"<div class='grid'>"+resultRows+"</div>";
+    }
+    return;
+  }
   if(m&&m.type==="qkState"){ qkClientRender(m); return; }
   if(m.type==="emojiGuess"){
     const label=m.phase==="title"?"Titel":"Interpret";
@@ -1638,6 +1690,7 @@ function lockCaptain(msg){
 }
 function setMode(m){
   modeName=m; answers={};
+  if(m==="doors") setTimeout(()=>doorBroadcast(),50);
   if(m==="zimmer"){
     ZG_PLAYERS.forEach(n=>zgSend(n,{type:"zgState",round:zgRound,phase:(zgOut.has(n)?"paired":"ready"),title:ZG_ROUNDS[zgRound].title,question:ZG_ROUNDS[zgRound].question}));
     zgSend("Fabian",{type:"zgState",round:zgRound,phase:"excluded",title:"🏨 Bettgeflüster"});
@@ -1687,17 +1740,17 @@ function adjustManualPoint(team,delta){
 
 function hostRulesHtml(mode){
   const R={
-    absprung:{name:"Absprung",who:"Einzelspieler",buzz:"Nein",text:"Die Spieler springen nacheinander digital über Kroatien ab. Jeder öffnet seinen Fallschirm selbst. Bei der Landung wird das Team aufgedeckt."},
-    quiz:{name:"Adria-Abitur",who:"Kapitäne",buzz:"Nein",text:"20 Kroatien-Fragen. Alle drei Teams antworten gleichzeitig über ihre Kapitäne. Pro Frage laufen 30 Sekunden. Richtige Antwort = 1 Punkt. Sobald alle Teams geantwortet haben, wird automatisch aufgelöst."},
-    estimate:{name:"Dicht daneben",who:"Kapitäne",buzz:"Nein",text:"Alle drei Kapitäne geben gleichzeitig eine Schätzung in Kilometern ab. Pro Frage laufen 60 Sekunden. Bei der Auflösung sehen Spielleiter, Kapitäne und TV/Zuschauer die richtige Zahl, jede Schätzung und die jeweilige Differenz. Nächstes Team = 2 Punkte, zweites = 1 Punkt, drittes = 0."},
-    category:{name:"Listen-Lotto",who:"Kapitäne",buzz:"Nein",text:"Die Teams spielen nacheinander. Das aktive Team hat 35 Sekunden für einen gültigen Begriff. Richtige Antwort = nächstes noch aktives Team wird automatisch ausgewählt. Falsche Antwort = Team ist für die Kategorie raus und nicht mehr auswählbar. Im Dropdown wird das zuletzt antwortende Team markiert. Letztes Team gewinnt die Kategorie."},
+    doors:{name:"Drei Türen",who:"Einzelspieler",buzz:"Nein",text:rosterRuleText()+" Alle Spieler loggen sich mit ihrem Namen ein. Immer nur der aktuell aufgerufene Spieler darf auf seinem eigenen Handy eine von drei Türen öffnen. Danach sehen alle Spieler gleichzeitig die Auflösung „Name → Team X“. Anschließend wird automatisch der nächste Spieler freigeschaltet."},
+    quiz:{name:"Adria-Abitur",who:"Kapitäne",buzz:"Nein",text:rosterRuleText()+" 20 Kroatien-Fragen. Alle drei Teams antworten gleichzeitig über ihre Kapitäne. Pro Frage laufen 30 Sekunden. Richtige Antwort = 1 Punkt. Sobald alle Teams geantwortet haben, wird automatisch aufgelöst."},
+    estimate:{name:"Dicht daneben",who:"Kapitäne",buzz:"Nein",text:rosterRuleText()+" Alle drei Kapitäne geben gleichzeitig eine Schätzung in Kilometern ab. Pro Frage laufen 60 Sekunden. Bei der Auflösung sehen Spielleiter, Kapitäne und TV/Zuschauer die richtige Zahl, jede Schätzung und die jeweilige Differenz. Nächstes Team = 2 Punkte, zweites = 1 Punkt, drittes = 0."},
+    category:{name:"Listen-Lotto",who:"Kapitäne",buzz:"Nein",text:rosterRuleText()+" Die Teams spielen nacheinander. Das aktive Team hat 35 Sekunden für einen gültigen Begriff. Richtige Antwort = nächstes noch aktives Team wird automatisch ausgewählt. Falsche Antwort = Team ist für die Kategorie raus und nicht mehr auswählbar. Im Dropdown wird das zuletzt antwortende Team markiert. Letztes Team gewinnt die Kategorie."},
     higherlower:{name:"Higher or Lower",who:"Einzelspieler",buzz:"Nein",text:"Alle ausgewählten Einzelspieler beantworten dieselbe Frage gleichzeitig mit HÖHER oder NIEDRIGER. 30 Sekunden pro Frage. Falsch oder keine Antwort = 1 Leben weg. Mit 0 Leben scheidet der Spieler aus; letzter Spieler mit Leben gewinnt."},
-    higherlowerteam:{name:"Higher or Lower · TEAM",who:"Kapitäne",buzz:"Nein",text:"Alle drei Teams spielen gleichzeitig; nur die Kapitäne tippen HÖHER oder NIEDRIGER. Die übrigen Spieler beraten über TV/Zuschauer mit. 1–5 Teamleben einstellbar. 30 Sekunden pro Frage; sobald alle noch aktiven Teams geantwortet haben, wird automatisch aufgelöst. Falsch oder keine Antwort = 1 Teamleben weg."},
+    higherlowerteam:{name:"Higher or Lower · TEAM",who:"Kapitäne",buzz:"Nein",text:rosterRuleText()+" Alle drei Teams spielen gleichzeitig; nur die Kapitäne tippen HÖHER oder NIEDRIGER. Die übrigen Spieler beraten über TV/Zuschauer mit. 1–5 Teamleben einstellbar. 30 Sekunden pro Frage; sobald alle noch aktiven Teams geantwortet haben, wird automatisch aufgelöst. Falsch oder keine Antwort = 1 Teamleben weg."},
     higherlowerbed:{name:"Higher or Lower – Bedtime Story",who:"Einzelspieler",buzz:"Nein",text:"Wie Higher or Lower: alle ausgewählten Einzelspieler antworten gleichzeitig. 30 Sekunden pro Frage; falsch oder keine Antwort = 1 Leben weg. Die ersten 12 Fragen sind feste Kegelclub-Fragen, danach folgen zufällige Fragen."},
-    emoji:{name:"Emoji-Eskalation",who:"Kapitäne",buzz:"Nein",text:"Die Kapitäne raten ohne Countdown. Zuerst wird der Songtitel gesucht (+2 Punkte), danach der Interpret (+1 Punkt). Maximal 3 Versuche je Team und Phase. Jeder abgesendete Guess wird sofort beim Spielleiter, allen Kapitänen und auf TV/Zuschauer angezeigt."},
-    transfertinder:{name:"Transfer-Tinder",who:"Einzelspieler",buzz:"Ja",text:"Die Karrierestationen eines Fußballers werden nacheinander aufgedeckt. Alle Einzelspieler dürfen auf ihrem Handy für ihr Team buzzern und sagen die Lösung laut. Nach dem Buzz: 10 Sekunden. Richtig = 1 Punkt für das Team. Falsch = komplettes Team für diesen Fußballer raus. „Lösen / Auflösen“ zeigt alle Stationen ohne Punkt."},
-    buzzer:{name:"Buzzer",who:"Einzelspieler",buzz:"Ja",text:"Alle Einzelspieler buzzern auf dem eigenen Handy. Die Reihenfolge wird gespeichert. Der Erste hat 10 Sekunden zum Antworten. Bei einer falschen Antwort ist automatisch der nächste Spieler in der Buzzer-Reihenfolge dran."},
-    tourpics:{name:"Blackout-Bilder",who:"Kapitäne",buzz:"Ja",text:"Die Teams beraten gemeinsam, nur die Kapitäne buzzern. Das Foto wird auf TV/Zuschauer und bei den Kapitänen gezeigt. Richtiger Ort = 2 Punkte. Danach darf dasselbe Team das Jahr raten; richtiges Jahr = +1 Punkt."},
+    emoji:{name:"Emoji-Eskalation",who:"Kapitäne",buzz:"Nein",text:rosterRuleText()+" Die Kapitäne raten ohne Countdown. Zuerst wird der Songtitel gesucht (+2 Punkte), danach der Interpret (+1 Punkt). Maximal 3 Versuche je Team und Phase. Jeder abgesendete Guess wird sofort beim Spielleiter, allen Kapitänen und auf TV/Zuschauer angezeigt."},
+    transfertinder:{name:"Transfer-Tinder",who:"Einzelspieler",buzz:"Ja",text:rosterRuleText()+" Alle "+teamPlayerCount()+" Teamspieler dürfen auf ihrem Handy für ihr Team buzzern. Die Karrierestationen eines Fußballers werden nacheinander aufgedeckt. Nach dem Buzz: 10 Sekunden. Richtig = 1 Punkt für das Team. Falsch = komplettes Team für diesen Fußballer raus. „Lösen / Auflösen“ zeigt alle Stationen ohne Punkt."},
+    buzzer:{name:"Buzzer",who:"Einzelspieler",buzz:"Ja",text:rosterRuleText()+" Alle "+teamPlayerCount()+" Teamspieler buzzern auf dem eigenen Handy. Die Reihenfolge wird gespeichert. Der Erste hat 10 Sekunden zum Antworten. Bei einer falschen Antwort ist automatisch der nächste Spieler in der Buzzer-Reihenfolge dran."},
+    tourpics:{name:"Blackout-Bilder",who:"Kapitäne",buzz:"Ja",text:rosterRuleText()+" Die Teams beraten gemeinsam, nur die Kapitäne buzzern. Das Foto wird auf TV/Zuschauer und bei den Kapitänen gezeigt. Richtiger Ort = 2 Punkte. Danach darf dasselbe Team das Jahr raten; richtiges Jahr = +1 Punkt."},
     zimmer:{name:"Bettgeflüster",who:"Einzelspieler",buzz:"Nein",text:(KLEMM_DABEI
       ?"Klemm dabei: Vor Ort zwischen Variante 1 (Couch gut: Jan und Fabian je Einzelzimmer; 4 Doppelzimmer + 1 Couch) und Variante 2 (Couch schlecht: Jan + Fabian zusammen; 4 Doppelzimmer + 1 Einzelzimmer) wählen."
       :"Klemm fällt aus: Variante 3 wird automatisch verwendet. Jan und Fabian bekommen jeweils ein Einzelzimmer; die übrigen 8 Spieler bilden 4 Doppelzimmer. Couch egal.")+" Runde 1 ist Higher or Lower – Bedtime Stories mit 3 Leben und Sudden Death."},
@@ -1708,96 +1761,94 @@ function hostRulesHtml(mode){
 }
 
 
-// ===== ABSPRUNG – Team-Auslosung =====
-// Die Spieler erleben eine zufällige Reihenfolge und Landungsanimation.
-// Die Zielzuordnung wird nur intern verwendet und niemals vorab an Clients gesendet.
-const DROP_CODE = {
-  "Stefan":"A","Andre":"A","Michel":"A","Klemm":"A",
-  "Markus":"B","Fabian":"B","Mario":"B",
-  "Swen":"C","Kevin":"C","Patrick":"C"
+// ===== DREI TÜREN – Team-Auslosung =====
+// Die Teamzuordnung ist intern festgelegt. Die gewählte Tür ändert nur die Animation,
+// nicht das Zielteam. Nur der jeweils aktive Spieler kann auf seinem Gerät öffnen.
+const DOOR_TEAM = {
+  "Stefan":"team1","Andre":"team1","Michel":"team1","Klemm":"team1",
+  "Markus":"team2","Fabian":"team2","Mario":"team2",
+  "Swen":"team3","Kevin":"team3","Patrick":"team3"
 };
-const DROP_TEAM={A:"team1",B:"team2",C:"team3"};
-let dropOrder=[],dropIndex=0,dropResults=[],dropPhase="idle",dropCurrent=null,dropTimer=null;
+// Reihenfolge: Kevin beginnt; danach feste Reihenfolge. Klemm wird bei Ausfall automatisch entfernt.
+const DOOR_ORDER_MASTER=["Kevin","Stefan","Markus","Michel","Patrick","Andre","Fabian","Mario","Swen","Klemm"];
+let doorOrder=[],doorIndex=0,doorResults=[],doorPhase="idle",doorCurrent=null;
 
-function dropActivePlayers(){
-  return Object.keys(DROP_CODE).filter(n=>KLEMM_DABEI||n!=="Klemm");
+function doorActivePlayers(){return DOOR_ORDER_MASTER.filter(n=>n!=="Klemm"||KLEMM_DABEI);}
+function doorTeamName(t){return t==="team1"?"TEAM 1":t==="team2"?"TEAM 2":"TEAM 3";}
+function doorState(){
+  return {
+    type:"doorState",phase:doorPhase,current:doorCurrent,index:doorIndex,total:doorOrder.length,
+    results:doorResults.map(x=>({...x})),done:doorPhase==="done"
+  };
 }
-function dropShuffle(a){
-  a=[...a];
-  for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}
-  return a;
+function doorBroadcast(){sendAll(doorState());}
+function doorStart(){
+  doorOrder=doorActivePlayers();doorIndex=0;doorResults=[];doorPhase="turn";
+  doorCurrent=doorOrder[0]||null;
+  doorBroadcast();renderHost();
 }
-function dropStart(){
-  dropOrder=dropShuffle(dropActivePlayers());dropIndex=0;dropResults=[];dropPhase="ready";dropCurrent=dropOrder[0]||null;renderHost();
+function doorOpen(name,doorNo){
+  if(modeName!=="doors"||doorPhase!=="turn"||name!==doorCurrent)return;
+  if(![1,2,3].includes(Number(doorNo)))return;
+  const team=DOOR_TEAM[name]; if(!team)return;
+  doorResults.push({name,team,door:Number(doorNo)});
+  doorPhase="reveal";
+  doorBroadcast();renderHost();
+  setTimeout(()=>{
+    if(modeName!=="doors"||doorPhase!=="reveal")return;
+    doorIndex++;
+    if(doorIndex>=doorOrder.length){doorCurrent=null;doorPhase="done";}
+    else{doorCurrent=doorOrder[doorIndex];doorPhase="turn";}
+    doorBroadcast();renderHost();
+  },3200);
 }
-function dropOpen(){
-  if(!dropCurrent||dropPhase!=="ready")return;
-  dropPhase="falling";renderHost();
-  clearTimeout(dropTimer);
-  dropTimer=setTimeout(()=>{dropPhase="revealed";dropResults.push([dropCurrent,DROP_TEAM[DROP_CODE[dropCurrent]]]);renderHost();},2300);
+function doorReset(){
+  if(!confirm("Drei Türen wirklich komplett zurücksetzen?"))return;
+  doorOrder=[];doorIndex=0;doorResults=[];doorPhase="idle";doorCurrent=null;
+  doorBroadcast();renderHost();
 }
-function dropNext(){
-  if(dropPhase!=="revealed")return;
-  dropIndex++;
-  if(dropIndex>=dropOrder.length){dropCurrent=null;dropPhase="finished";}
-  else {dropCurrent=dropOrder[dropIndex];dropPhase="ready";}
-  renderHost();
+function doorTeamRows(){
+  return ["team1","team2","team3"].map(t=>{
+    const names=doorResults.filter(x=>x.team===t).map(x=>x.name);
+    return "<div class='status'><b>"+doorTeamName(t)+"</b><br>"+(names.length?names.map(zgEsc).join(" · "):"—")+"</div>";
+  }).join("");
 }
-function dropReset(){
-  clearTimeout(dropTimer);dropOrder=[];dropIndex=0;dropResults=[];dropPhase="idle";dropCurrent=null;renderHost();
-}
-function dropTeamName(t){return t==="team1"?"TEAM 1":t==="team2"?"TEAM 2":"TEAM 3";}
-function dropRosterHtml(){
-  const groups={team1:[],team2:[],team3:[]};
-  dropResults.forEach(([n,t])=>groups[t].push(n));
-  return "<div class='grid'>"+["team1","team2","team3"].map(t=>"<div class='status'><b>"+dropTeamName(t)+"</b><br>"+(groups[t].length?groups[t].join(" · "):"—")+"</div>").join("")+"</div>";
-}
-function dropHostHtml(){
-  if(dropPhase==="idle"){
-    return "<div class='card'><h2>🪂 ABSPRUNG</h2><div class='status'>"+dropActivePlayers().length+" Spieler springen über Kroatien ab. Einer nach dem anderen entscheidet selbst, wann der Fallschirm geöffnet wird. Erst bei der Landung wird das Team sichtbar.</div>"+
-      "<div class='status'><b>"+(KLEMM_DABEI?"Klemm ist dabei · 4 / 3 / 3":"Klemm fällt aus · 3 / 3 / 3")+"</b></div>"+
-      "<button id='dropStart' class='good' style='width:100%;font-size:22px'>✈️ FLUG STARTEN</button></div>";
+function doorHostHtml(){
+  if(doorPhase==="idle"){
+    return "<div class='card'><h2>🚪 DREI TÜREN</h2><div class='status'><b>"+teamPlayerCount()+" Spieler</b> · "+teamSizeText()+"</div>"+
+      "<p>Alle Spieler verbinden sich vorher über <b>SPIELER / BUZZER</b>. Kevin beginnt. Danach wird immer genau ein Spieler freigeschaltet.</p>"+
+      "<button id='doorStart' class='good' style='width:100%;font-size:22px'>AUSLOSUNG STARTEN</button></div>";
   }
-  const landed=dropResults.find(x=>x[0]===dropCurrent);
-  const revealedTeam=landed?landed[1]:null;
-  let h="<div class='card'><h2>🪂 ABSPRUNG</h2><div class='pill'>SPRUNG "+Math.min(dropIndex+1,dropOrder.length)+" / "+dropOrder.length+"</div>";
-  if(dropPhase==="finished"){
-    h+="<div class='drop-reveal'>🏁 ALLE SIND GELANDET</div>"+dropRosterHtml()+
-       "<button id='dropReset' class='danger' style='width:100%;margin-top:12px'>NEU STARTEN</button></div>";
-    return h;
+  let headline=doorPhase==="done"?"🏁 AUSLOSUNG BEENDET":
+    doorPhase==="reveal"?"🚪 TÜR GEÖFFNET":"🔐 JETZT DRAN: "+zgEsc(doorCurrent||"");
+  let reveal="";
+  if(doorPhase==="reveal"){
+    const x=doorResults[doorResults.length-1];
+    reveal="<div class='status ok' style='font-size:34px;text-align:center;padding:24px'><b>"+zgEsc(x.name)+" → "+doorTeamName(x.team)+"</b></div>";
+  } else if(doorPhase==="turn"){
+    reveal="<div class='status' style='font-size:20px;text-align:center'>Nur <b>"+zgEsc(doorCurrent)+"</b> kann jetzt auf seinem Handy eine Tür öffnen.</div>";
   }
-  h+="<div class='drop-stage'><div class='drop-sun'>☀️</div><div class='drop-cloud' style='left:18%;top:55px'>☁️</div><div class='drop-cloud' style='left:67%;top:105px'>☁️</div>"+
-     "<div class='drop-plane'>✈️</div><div class='drop-person "+(dropPhase==="falling"?"falling":dropPhase==="revealed"?"landed":"")+"'>"+(dropPhase==="revealed"?"<span class='drop-chute'>🪂</span>":"🧍")+"</div>"+
-     "<div class='drop-teams'><div class='drop-zone'>🏖️ LANDZONE</div><div class='drop-zone'>🌴 LANDZONE</div><div class='drop-zone'>🍺 LANDZONE</div></div></div>"+
-     "<div class='drop-reveal'>"+dropCurrent+"</div>";
-  if(dropPhase==="ready"){
-    h+="<div class='status' style='text-align:center'>Im freien Fall …<br><b>"+dropCurrent+" entscheidet, wann geöffnet wird.</b></div>"+
-       "<button id='dropOpen' class='good' style='width:100%;font-size:24px;min-height:75px'>🪂 FALLSCHIRM ÖFFNEN!</button>";
-  }else if(dropPhase==="falling"){
-    h+="<div class='status' style='text-align:center;font-size:22px'><b>🪂 SCHIRM OFFEN – LANDUNG …</b></div>";
-  }else if(dropPhase==="revealed"){
-    h+="<div class='status ok' style='text-align:center;font-size:28px'><b>"+dropCurrent+" landet in "+dropTeamName(revealedTeam)+"!</b></div>"+
-       dropRosterHtml()+"<button id='dropNext' class='good' style='width:100%;font-size:20px'>NÄCHSTER SPRINGER →</button>";
-  }
-  h+="<button id='dropReset' class='danger' style='width:100%;margin-top:12px'>ABSPRUNG ZURÜCKSETZEN</button></div>";
-  return h;
+  return "<div class='card'><h2>"+headline+"</h2>"+reveal+
+    "<div class='status'>Fortschritt: "+doorResults.length+" / "+doorOrder.length+"</div>"+
+    "<div class='grid'>"+doorTeamRows()+"</div>"+
+    "<button id='doorReset' class='danger' style='width:100%;margin-top:16px'>KOMPLETT ZURÜCKSETZEN</button></div>";
 }
 
 function renderHost(){
-  if(modeName==="absprung"){
-    $("hostGame").innerHTML=dropHostHtml();
-    const a=$("dropStart"),b=$("dropOpen"),c=$("dropNext"),d=$("dropReset");
-    if(a)a.onclick=dropStart;if(b)b.onclick=dropOpen;if(c)c.onclick=dropNext;if(d)d.onclick=dropReset;
+  if(modeName==="doors"){
+    $("hostGame").innerHTML=doorHostHtml();
+    const a=$("doorStart"),d=$("doorReset");
+    if(a)a.onclick=doorStart;if(d)d.onclick=doorReset;
     return;
   }
   if(modeName==="setup"){
     const cnt=KLEMM_DABEI?10:9;
     $("hostGame").innerHTML="<div class='card'><h2>⚙️ REISE-SETUP</h2>"+
       "<div class='status "+(KLEMM_DABEI?"ok":"bad")+"'><b>Klemm: "+(KLEMM_DABEI?"DABEI":"FÄLLT AUS")+"</b><br>"+
-      (KLEMM_DABEI?"10 Teamspieler · Teamgrößen 4 / 3 / 3":"9 Teamspieler · Teamgrößen 3 / 3 / 3")+"</div>"+
+      teamPlayerCount()+" Teamspieler · Teamgrößen "+teamSizeText()+"</div>"+
       "<p class='muted'>Dieser Schalter passt Klemm zentral für Spielerlisten, Einzelspiele, Transfer-Tinder, Buzzer, Bettgeflüster und Teamanzeige an. Die Einstellung bleibt nach einem Browser-Neustart gespeichert.</p>"+
       "<div class='grid'><button id='klemmYes' class='good'>✓ KLEMM DABEI</button><button id='klemmNo' class='danger'>✕ KLEMM FÄLLT AUS</button></div>"+
-      "<div class='status' style='margin-top:12px'><b>Aktuelle Teamgrößen:</b> "+(KLEMM_DABEI?"4 / 3 / 3":"3 / 3 / 3")+"</div></div>";
+      "<div class='status' style='margin-top:12px'><b>Aktuelle Teamgrößen:</b> "+teamSizeText()+"</div></div>";
     const y=$("klemmYes"),n=$("klemmNo"); if(y)y.onclick=()=>setKlemmDabeiProtected(true); if(n)n.onclick=()=>setKlemmDabeiProtected(false);
     return;
   }
@@ -1871,7 +1922,7 @@ function renderHost(){
   if(modeName==="transfertinder"){
     const p=TT_PLAYERS[ttIdx],cur=ttBuzzOrder[ttAnswerIndex]||null;
     if(ttPhase==="idle"){
-      h="<div class='card'><h2>⚽ Transfer-Tinder</h2><p class='muted'>Die Vereinsstationen eines Fußballers werden nach und nach eingeblendet. Alle Spieler buzzern auf ihrem eigenen Gerät für ihr Team. <b>200 Fußballer</b> sind hinterlegt; die Reihenfolge wird bei jedem neuen Spiel zufällig gemischt.</p>"+ttScoreHtml()+"<div class='status'><b>Nächster Spieler:</b> "+(ttIdx+1)+" / "+TT_PLAYERS.length+" <span class='muted'>(Lösung nur Spielleiter: "+p.name+")</span></div><div class='grid'><button id='ttStart' class='good'>RUNDE STARTEN</button><button id='ttNewGame' class='secondary'>NEU MISCHEN / PUNKTE 0</button></div></div>";
+      h="<div class='card'><h2>⚽ Transfer-Tinder</h2><p class='muted'>Die Vereinsstationen eines Fußballers werden nach und nach eingeblendet. Alle "+teamPlayerCount()+" Teamspieler buzzern auf ihrem eigenen Gerät für ihr Team. <b>200 Fußballer</b> sind hinterlegt; die Reihenfolge wird bei jedem neuen Spiel zufällig gemischt.</p>"+ttScoreHtml()+"<div class='status'><b>Nächster Spieler:</b> "+(ttIdx+1)+" / "+TT_PLAYERS.length+" <span class='muted'>(Lösung nur Spielleiter: "+p.name+")</span></div><div class='grid'><button id='ttStart' class='good'>RUNDE STARTEN</button><button id='ttNewGame' class='secondary'>NEU MISCHEN / PUNKTE 0</button></div></div>";
     }else{
       h="<div class='card'><h2>⚽ Transfer-Tinder</h2><div class='pill'>Spieler "+(ttIdx+1)+"/"+TT_PLAYERS.length+" · Station "+ttReveal+"/"+p.stages.length+" · 1 Punkt bei richtiger Lösung</div>"+ttScoreHtml()+
       "<div class='status' style='border:2px solid #16834b;background:#eefaf3'><b>🔐 Lösung nur Spielleiter: "+p.name+"</b></div>"+ttStageHtml(p,ttReveal,ttPhase==="solved")+
@@ -1883,7 +1934,7 @@ function renderHost(){
   }
 
   if(modeName==="buzzer"){
-    h="<div class='card'><h2>🔴 Buzzer</h2><p class='muted'>Alle "+(KLEMM_DABEI?"10":"9")+" Teamspieler buzzern auf dem eigenen Handy. Die Reihenfolge bleibt erhalten, damit bei einer falschen Antwort der Nächste dran ist.</p><div class='grid'><button id='buzzOpenBtn' class='good'>BUZZER FREIGEBEN</button><button id='buzzCloseBtn' class='secondary'>SPERREN</button><button id='buzzResetBtn' class='danger'>NEUE RUNDE</button></div><h3>Reihenfolge</h3>"+(buzzOrder.length?buzzOrder.map((n,i)=>"<div class='status' style='font-size:"+(i===0?26:18)+"px'><b>"+(i+1)+". "+n+"</b></div>").join(""):"<div class='status'>Noch niemand gebuzzert.</div>")+"<div id='buzzTurnBox'>"+(buzzOrder.length?"<div class='status ok' style='font-size:24px'><b>Antwortet: "+buzzOrder[Math.min(buzzAnswerIndex,buzzOrder.length-1)]+"</b><div id='buzzAnswerCountdown' class='big' style='font-size:42px'>"+(buzzAnswerEnd?Math.max(0,Math.ceil((buzzAnswerEnd-Date.now())/1000)):"10")+"</div></div>":"")+"</div>"+
+    h="<div class='card'><h2>🔴 Buzzer</h2><p class='muted'>Alle "+teamPlayerCount()+" Teamspieler buzzern auf dem eigenen Handy. Die Reihenfolge bleibt erhalten, damit bei einer falschen Antwort der Nächste dran ist.</p><div class='grid'><button id='buzzOpenBtn' class='good'>BUZZER FREIGEBEN</button><button id='buzzCloseBtn' class='secondary'>SPERREN</button><button id='buzzResetBtn' class='danger'>NEUE RUNDE</button></div><h3>Reihenfolge</h3>"+(buzzOrder.length?buzzOrder.map((n,i)=>"<div class='status' style='font-size:"+(i===0?26:18)+"px'><b>"+(i+1)+". "+n+"</b></div>").join(""):"<div class='status'>Noch niemand gebuzzert.</div>")+"<div id='buzzTurnBox'>"+(buzzOrder.length?"<div class='status ok' style='font-size:24px'><b>Antwortet: "+buzzOrder[Math.min(buzzAnswerIndex,buzzOrder.length-1)]+"</b><div id='buzzAnswerCountdown' class='big' style='font-size:42px'>"+(buzzAnswerEnd?Math.max(0,Math.ceil((buzzAnswerEnd-Date.now())/1000)):"10")+"</div></div>":"")+"</div>"+
       (buzzOrder.length?"<div class='grid'><button id='buzzWrongBtn' class='danger'>FALSCH → NÄCHSTER</button><button id='buzzRightBtn' class='good'>RICHTIG ✓</button></div>":"")+
       "<p><b>Status:</b> "+(buzzOpen?"🟢 Buzzer offen":"🔒 Buzzer gesperrt")+"</p></div>";
   }
@@ -2163,7 +2214,7 @@ function zgHostHtml(){
 
   if(KLEMM_DABEI && !zgVariant){
     return "<div class='card'><h2>🏨 BETTGEFLÜSTER</h2>"+
-      "<div class='status' style='text-align:left'><b>11 Mann · Klemm ist dabei</b><br>"+
+      "<div class='status' style='text-align:left'><b>"+travelerCount()+" Mann · Klemm ist dabei</b><br>"+
       "Jan und Fabian spielen nicht mit. Wähle vor Ort nur noch, ob die Couch akzeptabel ist.</div>"+
       "<div class='grid'>"+
       "<button id='zgVariantCouch' class='good' style='min-height:105px'><b>🛋️ VARIANTE 1 · COUCH GUT</b><br><span style='font-size:14px'>Jan & Fabian je Einzelzimmer · 4 Doppelzimmer · 1 Couch</span></button>"+
@@ -2387,7 +2438,7 @@ function acceptCategory(t){
 
 function refreshSetupKlemmState(){
   const e=$("setupKlemmState");
-  if(e)e.textContent=KLEMM_DABEI?"Aktuell: KLEMM DABEI → Teams 4 / 3 / 3":"Aktuell: KLEMM FÄLLT AUS → Teams 3 / 3 / 3";
+  if(e)e.textContent=KLEMM_DABEI?"Aktuell: KLEMM DABEI → "+travelerCount()+" Reisende · Teams "+teamSizeText():"Aktuell: KLEMM FÄLLT AUS → "+travelerCount()+" Reisende · Teams "+teamSizeText();
 }
 const sky=$("setupKlemmYes"),skn=$("setupKlemmNo");
 if(sky)sky.addEventListener("click",()=>setKlemmDabeiProtected(true));
