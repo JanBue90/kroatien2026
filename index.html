@@ -1859,7 +1859,7 @@ function revealEstimate(auto=false){
   html+=estimateScoreHtml(estimateScores);
   const hr=$("hostReveal"); if(hr)hr.innerHTML="<div class='card'>"+html+"</div>";
   sendAll({type:"reveal",html,scores:{...estimateScores},scoreKind:"estimate",kind:"estimate"});
-  sendShortStandings(estimateScores,"DICHT DANEBEN · NACH RUNDE "+(eidx+1));
+  // Detail-Auflösung bleibt sichtbar; Kurz-Zwischenstand überschreibt sie nicht.
   renderHost();
   const hr2=$("hostReveal"); if(hr2)hr2.innerHTML="<div class='card'>"+html+"</div>";
 }
