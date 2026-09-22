@@ -1846,7 +1846,7 @@ function revealEstimate(auto=false){
     arr.forEach((x,i)=>estimateScores[x[0]]=(estimateScores[x[0]]||0)+(pts[i]||0));
     estimateAwarded.add(eidx);
   }
-  let html="<p><b>Richtige Zahl: "+sol.toLocaleString("de-DE")+" km</b></p>";
+  let html="<p><b>Richtige Zahl: "+sol.toLocaleString("de-DE")+" km</b></p><div class='muted' style='margin-bottom:10px'>Alle Tipps · jeweils mit Differenz zur richtigen Zahl</div>";
   ["team1","team2","team3"].forEach(t=>{
     const row=arr.find(x=>x[0]===t);
     if(!row){
