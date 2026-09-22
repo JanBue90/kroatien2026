@@ -332,6 +332,7 @@ window.GAME_DATA.emoji=[["👁️ 🐅 🥊 🏆", "Eye of the Tiger", "Survivor
 </script>
 <script>
 "use strict";
+const KLEMM_DABEI = localStorage.getItem("kroatien_klemm_dabei") !== "0";
 const D=window.GAME_DATA;
 if(D&&D.teams){
   if(D.teams.team1) D.teams.team1.players = ["Stefan","Andre","Michel"].concat(KLEMM_DABEI?["Klemm"]:[]).join(" · ");
@@ -371,7 +372,6 @@ if(!Array.isArray(D.emoji)){
   ];
 }
 const $=id=>document.getElementById(id);
-const KLEMM_DABEI = localStorage.getItem("kroatien_klemm_dabei") !== "0";
 function setKlemmDabei(v){
   localStorage.setItem("kroatien_klemm_dabei", v ? "1" : "0");
   location.reload();
