@@ -334,6 +334,16 @@ window.GAME_DATA.emoji=[["👁️ 🐅 🥊 🏆", "Eye of the Tiger", "Survivor
 "use strict";
 const KLEMM_DABEI = localStorage.getItem("kroatien_klemm_dabei") !== "0";
 const D=window.GAME_DATA;
+let TEAMS_REVEALED = localStorage.getItem("kroatien_teams_revealed")==="1";
+function teamRosterHtml(team){
+  return TEAMS_REVEALED ? "<div class='muted'>"+D.teams[team].players+"</div>" : "";
+}
+function syncTeamRosterVisibility(){
+  if(role&&["team1","team2","team3"].includes(role)){
+    const e=$("teamName");
+    if(e)e.innerHTML="<b>"+D.teams[role].name+"</b>"+teamRosterHtml(role);
+  }
+}
 if(D&&D.teams){
   if(D.teams.team1) D.teams.team1.players = ["Stefan","Andre","Michel"].concat(KLEMM_DABEI?["Klemm"]:[]).join(" · ");
   if(D.teams.team2) D.teams.team2.players = ["Markus","Fabian","Mario"].join(" · ");
@@ -374,6 +384,7 @@ if(!Array.isArray(D.emoji)){
 const $=id=>document.getElementById(id);
 function setKlemmDabei(v){
   localStorage.setItem("kroatien_klemm_dabei", v ? "1" : "0");
+  localStorage.removeItem("kroatien_teams_revealed");
   location.reload();
 }
 function setKlemmDabeiProtected(v){
@@ -1235,7 +1246,7 @@ function join(teamRole){
       if(role==="screen") show("screenView");
       else{
         show("captainView");
-        $("teamName").innerHTML="<b>"+D.teams[role].name+"</b><div class='muted'>"+D.teams[role].players+"</div>";
+        $("teamName").innerHTML="<b>"+D.teams[role].name+"</b>"+teamRosterHtml(role);
       }
     });
     conn.on("data",onClientMessage);
@@ -1344,6 +1355,7 @@ function sendAll(msg){Object.values(conns).forEach(c=>{try{c.send(msg)}catch(e){
 function onClientMessage(m){
   if(m&&m.type==="doorState"){
     clearInterval(timerInt);
+    if(m.done){TEAMS_REVEALED=true;localStorage.setItem("kroatien_teams_revealed","1");syncTeamRosterVisibility();}
     const results=m.results||[];
     const last=results.length?results[results.length-1]:null;
     const resultRows=["team1","team2","team3"].map(t=>{
@@ -1368,16 +1380,16 @@ function onClientMessage(m){
       } else if(m.phase==="reveal"){
         body+="<div class='status'>Gleich ist der nächste Spieler dran …</div>";
       }
-      body+="<div class='grid' style='margin-top:12px'>"+resultRows+"</div>";
+      if(m.done) body+="<div class='grid' style='margin-top:12px'>"+resultRows+"</div>";
       $("playerAlert").className="status";$("playerAlert").innerHTML=body;$("playerRanking").innerHTML="";
       document.querySelectorAll(".doorChoice").forEach(b=>b.onclick=()=>{document.querySelectorAll(".doorChoice").forEach(x=>x.disabled=true);conn.send({type:"doorOpen",name:me,door:Number(b.dataset.door)});});
     } else if(role==="screen"){
       $("screenTitle").textContent="🚪 DREI TÜREN";
       $("screenTimer").textContent="";
-      $("screenStatus").innerHTML=reveal+(m.phase==="turn"?"<div class='status'><b>"+m.current+" ist jetzt dran.</b></div>":"")+"<div class='grid'>"+resultRows+"</div>";
+      $("screenStatus").innerHTML=reveal+(m.phase==="turn"?"<div class='status'><b>"+m.current+" ist jetzt dran.</b></div>":"")+(m.done?"<div class='grid'>"+resultRows+"</div>":"");
     } else if(role&&role.startsWith("team")){
       $("capTimer").textContent="";
-      $("capGame").innerHTML="<h2>🚪 DREI TÜREN</h2>"+reveal+(m.phase==="turn"?"<div class='status'><b>"+m.current+" ist jetzt dran.</b></div>":"")+"<div class='grid'>"+resultRows+"</div>";
+      $("capGame").innerHTML="<h2>🚪 DREI TÜREN</h2>"+reveal+(m.phase==="turn"?"<div class='status'><b>"+m.current+" ist jetzt dran.</b></div>":"")+(m.done?"<div class='grid'>"+resultRows+"</div>":"");
     }
     return;
   }
@@ -1797,15 +1809,18 @@ function doorOpen(name,doorNo){
   setTimeout(()=>{
     if(modeName!=="doors"||doorPhase!=="reveal")return;
     doorIndex++;
-    if(doorIndex>=doorOrder.length){doorCurrent=null;doorPhase="done";}
-    else{doorCurrent=doorOrder[doorIndex];doorPhase="turn";}
-    doorBroadcast();renderHost();
+    if(doorIndex>=doorOrder.length){
+      doorCurrent=null;doorPhase="done";
+      TEAMS_REVEALED=true;localStorage.setItem("kroatien_teams_revealed","1");
+    } else {doorCurrent=doorOrder[doorIndex];doorPhase="turn";}
+    doorBroadcast();syncTeamRosterVisibility();renderHost();
   },3200);
 }
 function doorReset(){
   if(!confirm("Drei Türen wirklich komplett zurücksetzen?"))return;
   doorOrder=[];doorIndex=0;doorResults=[];doorPhase="idle";doorCurrent=null;
-  doorBroadcast();renderHost();
+  TEAMS_REVEALED=false;localStorage.removeItem("kroatien_teams_revealed");
+  doorBroadcast();syncTeamRosterVisibility();renderHost();
 }
 function doorTeamRows(){
   return ["team1","team2","team3"].map(t=>{
@@ -1830,7 +1845,7 @@ function doorHostHtml(){
   }
   return "<div class='card'><h2>"+headline+"</h2>"+reveal+
     "<div class='status'>Fortschritt: "+doorResults.length+" / "+doorOrder.length+"</div>"+
-    "<div class='grid'>"+doorTeamRows()+"</div>"+
+    (doorPhase==="done"?"<div class='grid'>"+doorTeamRows()+"</div>":"")+
     "<button id='doorReset' class='danger' style='width:100%;margin-top:16px'>KOMPLETT ZURÜCKSETZEN</button></div>";
 }
 
