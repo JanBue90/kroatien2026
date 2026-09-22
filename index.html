@@ -243,6 +243,33 @@ table{font-size:11.5px!important}th,td{padding:6px 7px!important}
 @media(max-width:700px){body{font-size:12.5px}header{font-size:16px!important}.card{padding:11px!important}button,input,select{font-size:12px!important;padding:8px 9px!important}.tabs button{font-size:11.5px!important;flex-basis:105px!important}.big{font-size:23px!important}#buzzBtn{height:130px!important;font-size:27px!important}}
 </style>
 
+
+<style>
+.drop-stage{position:relative;min-height:360px;overflow:hidden;border-radius:22px;background:linear-gradient(#55b9e8 0 58%,#1f9fce 58% 66%,#e7c779 66%);border:3px solid #17324d;margin:12px 0}
+.drop-sun{position:absolute;right:24px;top:22px;font-size:58px}
+.drop-cloud{position:absolute;font-size:42px;opacity:.9}
+.drop-plane{position:absolute;left:20px;top:32px;font-size:52px;transition:all .7s ease}
+.drop-person{position:absolute;left:48%;top:90px;font-size:54px;transition:top 2.2s cubic-bezier(.45,.05,.75,.55),left 1.2s ease,transform .4s ease}
+.drop-person.falling{top:235px;transform:rotate(12deg)}
+.drop-person.landed{top:260px;transform:rotate(0)}
+.drop-teams{position:absolute;bottom:12px;left:2%;right:2%;display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.drop-zone{background:rgba(255,255,255,.9);border:2px dashed #17324d;border-radius:14px;padding:8px;text-align:center;font-weight:900;min-height:64px}
+.drop-hidden{filter:blur(7px);opacity:.45}
+.drop-reveal{font-size:34px;font-weight:950;text-align:center;margin:10px 0}
+@keyframes chutePop{0%{transform:scale(.2)}70%{transform:scale(1.25)}100%{transform:scale(1)}}
+.drop-chute{display:inline-block;animation:chutePop .5s ease}
+</style>
+
+<script>
+window.addEventListener("error",function(e){
+  const box=document.getElementById("setup");
+  if(box && !document.getElementById("bootError")){
+    const d=document.createElement("div"); d.id="bootError"; d.className="status bad";
+    d.innerHTML="<b>Technischer Fehler:</b> "+String(e.message||"Unbekannter Fehler");
+    box.prepend(d);
+  }
+});
+</script>
 </head>
 <body>
 <header>🇭🇷 Kroatien-Olympiade LIVE <span style="font-size:12px;opacity:.78">ADRIA BEACH EDITION · COMPACT · Saufy-Nauten 2026</span></header>
@@ -264,7 +291,7 @@ table{font-size:11.5px!important}th,td{padding:6px 7px!important}
 </div>
 <button id="screenJoinBtn" class="hide" style="width:100%;margin-top:10px">TV / ZUSCHAUER VERBINDEN</button>
 <div id="playerChoices" class="hide" style="margin-top:10px"><select id="playerSelect" style="width:100%">
-<option>Kevin</option><option>Markus</option><option>Stefan</option><option>Michel</option><option>Patrick</option><option>Mario</option><option>Fabian</option><option>Timo</option><option>Andre</option><option>Klemm</option><option>Swen</option>
+<option>Kevin</option><option>Markus</option><option>Stefan</option><option>Michel</option><option>Patrick</option><option>Mario</option><option>Fabian</option><option>Andre</option><option>Klemm</option><option>Swen</option>
 </select><button id="playerJoinBtn" type="button" style="width:100%;margin-top:10px">ALS SPIELER VERBINDEN</button></div>
 </div>
 </section>
@@ -272,7 +299,7 @@ table{font-size:11.5px!important}th,td{padding:6px 7px!important}
 <section id="hostView" class="hide">
 <div class="card"><div class="muted">Raumcode</div><div id="roomCode" class="big code"></div><div id="connections"></div></div>
 <div class="tabs">
-<button data-mode="quiz">Adria-Abitur</button>
+<button data-mode="setup" style="background:#17324d;color:#fff">⚙️ REISE-SETUP</button><button data-mode="absprung" style="background:#118ab2;color:#fff">🪂 ABSPRUNG</button><button data-mode="quiz">Adria-Abitur</button>
 <button data-mode="estimate">Dicht daneben</button>
 <button data-mode="category">Listen-Lotto</button><button data-mode="higherlower">Higher or Lower</button><button data-mode="higherlowerteam">Higher or Lower · TEAM</button><button data-mode="higherlowerbed">Higher or Lower - Bedtime Story</button><button data-mode="emoji">Emoji-Eskalation</button><button data-mode="transfertinder">⚽ Transfer-Tinder</button><button data-mode="quotenkoma" style="background:#3b0066;color:#fff;border-color:#7b2cbf">🎰 QUOTEN-KOMA</button><button data-mode="buzzer">Buzzer</button><button data-mode="tourpics">Blackout-Bilder</button><button data-mode="zimmer" class="good" style="font-size:17px;border:3px solid #0d6639">🏨 BETTGEFLÜSTER – ZIMMER AUSLOSEN</button>
 </div>
@@ -290,11 +317,18 @@ table{font-size:11.5px!important}th,td{padding:6px 7px!important}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js"></script>
-<script src="data.js?v=9"></script>
+<script>
+window.GAME_DATA={"teams": {"team1": {"name": "Team 1", "players": "Kevin · Markus · Stefan · Kay"}, "team2": {"name": "Team 2", "players": "Michel · Patrick · Mario · Fabian"}, "team3": {"name": "Team 3", "players": "Timo · Andre · Klemm · Swen"}}, "quiz": [["Wie heißt die Hauptstadt Kroatiens?", ["Split", "Zagreb", "Zadar", "Dubrovnik"], 1], ["Seit welchem Jahr ist Kroatien Mitglied der EU?", ["2009", "2011", "2013", "2015"], 2], ["Seit wann bezahlt man in Kroatien offiziell mit dem Euro?", ["2020", "2021", "2022", "2023"], 3], ["Welche Währung hatte Kroatien vorher?", ["Kuna", "Dinar", "Kruna", "Lira"], 0], ["An welchem Meer liegt Kroatien?", ["Schwarzes Meer", "Ionisches Meer", "Adriatisches Meer", "Ägäisches Meer"], 2], ["Wie viele Einwohner hat Kroatien ungefähr?", ["2 Mio.", "3,9 Mio.", "6,5 Mio.", "9 Mio."], 1], ["Wie heißt das berühmte Musikinstrument an der Promenade von Zadar?", ["Wasserklavier", "Meeresorgel", "Windharfe", "Adriatische Orgel"], 1], ["Was erzeugt bei der Meeresorgel die Musik?", ["Windräder", "Gezeitenmotoren", "Wellen und Luft", "Lautsprecher"], 2], ["Welcher berühmte Regisseur schwärmte vom Sonnenuntergang in Zadar?", ["Spielberg", "Tarantino", "Hitchcock", "Kubrick"], 2], ["Wie alt ist Zadar ungefähr?", ["500 Jahre", "1.000 Jahre", "2.000 Jahre", "über 3.000 Jahre"], 3], ["Welche Form wird Kroatien wegen seines Staatsgebiets häufig zugeschrieben?", ["Stiefel", "Hufeisen", "Dreieck", "Halbmond"], 1], ["Wie lautet die internationale Telefonvorwahl Kroatiens?", ["+375", "+380", "+385", "+395"], 2], ["Wie lautet die kroatische Internet-Endung?", [".cr", ".hr", ".kr", ".cro"], 1], ["Wie viele Inseln, Inselchen und Riffe hat Kroatien ungefähr zusammen?", ["244", "644", "944", "über 1.200"], 3], ["Wie viele davon sind ungefähr bewohnt?", ["10", "25", "50", "200"], 2], ["Wie tief ist die Adria an ihrer tiefsten Stelle ungefähr?", ["430 m", "730 m", "1.230 m", "2.430 m"], 2], ["Welcher Nationalpark liegt NICHT in Kroatien?", ["Krka", "Paklenica", "Plitvicer Seen", "Triglav"], 3], ["Welcher kroatische Fußballer gewann 2018 den Ballon d'Or?", ["Rakitić", "Mandžukić", "Modrić", "Perišić"], 2], ["Welche bekannte Biermarke stammt aus Zagreb?", ["Ožujsko", "Mythos", "Efes", "Moretti"], 0], ["Was bedeutet „Hrvatska“?", ["Dalmatien", "Kroatien", "Heimat", "Adriaküste"], 1]], "estimate": [["Dubai", 4135], ["Zadar", 30], ["Tschernobyl", 1390], ["Rio de Janeiro", 9545], ["Nieukerk", 1072], ["Pyramiden von Gizeh", 1830], ["Krka / Skradin", 37], ["Tokio", 9506], ["Dubrovnik", 255], ["Area 51", 9500], ["Reykjavík", 3230], ["Plitvicer Seen", 92], ["Sydney", 16066], ["Mount Everest", 6160], ["Zagreb", 198], ["New York City", 6982], ["Split", 91], ["Kapstadt", 8675], ["Las Vegas", 9700], ["Nordpol", 5109]], "categories": {"EU-Länder": ["Belgien", "Bulgarien", "Dänemark", "Deutschland", "Estland", "Finnland", "Frankreich", "Griechenland", "Irland", "Italien", "Kroatien", "Lettland", "Litauen", "Luxemburg", "Malta", "Niederlande", "Österreich", "Polen", "Portugal", "Rumänien", "Schweden", "Slowakei", "Slowenien", "Spanien", "Tschechien", "Ungarn", "Zypern"], "Deutsche Nationalspieler >60 Länderspiele": ["Michael Ballack", "Franz Beckenbauer", "Thomas Berthold", "Oliver Bierhoff", "Jérôme Boateng", "Andreas Brehme", "Hans-Peter Briegel", "Guido Buchwald", "Karlheinz Förster", "Arne Friedrich", "Torsten Frings", "Mario Gomez", "Leon Goretzka", "Mario Götze", "İlkay Gündoğan", "Thomas Häßler", "Kai Havertz", "Thomas Helmer", "Horst-Dieter Höttges", "Mats Hummels", "Paul Janes", "Oliver Kahn", "Manfred Kaltz", "Sami Khedira", "Joshua Kimmich", "Jürgen Klinsmann", "Miroslav Klose", "Jürgen Kohler", "Toni Kroos", "Philipp Lahm", "Jens Lehmann", "Ernst Lehner", "Pierre Littbarski", "Sepp Maier", "Lothar Matthäus", "Per Mertesacker", "Andreas Möller", "Gerd Müller", "Thomas Müller", "Manuel Neuer", "Oliver Neuville", "Wolfgang Overath", "Mesut Özil", "Lukas Podolski", "Stefan Reuter", "Karl-Heinz Rummenigge", "Antonio Rüdiger", "Leroy Sané", "Bernd Schneider", "Toni Schumacher", "Bastian Schweinsteiger", "Willi Schulz", "Uwe Seeler", "Christian Wörns", "Berti Vogts", "Rudi Völler", "Fritz Walter", "Christian Ziege"], "Deutsche Städte >200.000 Einwohner": ["Aachen", "Augsburg", "Berlin", "Bielefeld", "Bochum", "Bonn", "Braunschweig", "Bremen", "Chemnitz", "Dortmund", "Dresden", "Duisburg", "Düsseldorf", "Erfurt", "Essen", "Frankfurt am Main", "Freiburg im Breisgau", "Gelsenkirchen", "Halle (Saale)", "Hamburg", "Hannover", "Karlsruhe", "Kassel", "Kiel", "Köln", "Krefeld", "Leipzig", "Lübeck", "Magdeburg", "Mainz", "Mannheim", "Mönchengladbach", "München", "Münster", "Nürnberg", "Oberhausen", "Rostock", "Stuttgart", "Wiesbaden", "Wuppertal"], "Kfz-Kennzeichen mit einem Buchstaben": ["A", "B", "C", "D", "E", "F", "G", "H", "J", "K", "L", "M", "N", "P", "R", "S", "W", "Z"], "Formel-1-Weltmeister": ["Fernando Alonso", "Mario Andretti", "Alberto Ascari", "Jenson Button", "Jack Brabham", "Jim Clark", "Juan Manuel Fangio", "Nino Farina", "Emerson Fittipaldi", "Mika Häkkinen", "Lewis Hamilton", "Mike Hawthorn", "Damon Hill", "Graham Hill", "Phil Hill", "Denny Hulme", "James Hunt", "Alan Jones", "Niki Lauda", "Nigel Mansell", "Lando Norris", "Nelson Piquet", "Alain Prost", "Kimi Räikkönen", "Jochen Rindt", "Nico Rosberg", "Keke Rosberg", "Jody Scheckter", "Michael Schumacher", "Ayrton Senna", "Jackie Stewart", "John Surtees", "Max Verstappen", "Jacques Villeneuve", "Sebastian Vettel"], "James-Bond-Filme": ["Casino Royale", "Der Hauch des Todes", "Der Mann mit dem goldenen Colt", "Der Morgen stirbt nie", "Der Spion, der mich liebte", "Diamantenfieber", "Ein Quantum Trost", "Feuerball", "GoldenEye", "Goldfinger", "Im Angesicht des Todes", "Im Geheimdienst Ihrer Majestät", "In tödlicher Mission", "James Bond 007 jagt Dr. No", "Keine Zeit zu sterben", "Leben und sterben lassen", "Liebesgrüße aus Moskau", "Lizenz zum Töten", "Man lebt nur zweimal", "Moonraker – Streng geheim", "Octopussy", "Skyfall", "Spectre", "Stirb an einem anderen Tag"], "NBA-Städte": ["Atlanta", "Boston", "Brooklyn", "Charlotte", "Chicago", "Cleveland", "Dallas", "Denver", "Detroit", "Houston", "Indianapolis", "Los Angeles", "Memphis", "Miami", "Milwaukee", "Minneapolis", "New Orleans", "New York", "Oklahoma City", "Orlando", "Philadelphia", "Phoenix", "Portland", "Sacramento", "Salt Lake City", "San Antonio", "San Francisco", "Washington, D.C."]}};
+window.GAME_DATA.emoji=[["👁️ 🐅 🥊 🏆", "Eye of the Tiger", "Survivor"], ["🛣️ ➡️ 🔥 😈", "Highway to Hell", "AC/DC"], ["🕺 👑 👩 🎶", "Dancing Queen", "ABBA"], ["🏨 🌴 ☀️ 🇺🇸", "Hotel California", "Eagles"], ["👧 🔥 🔥 🎤", "Girl on Fire", "Alicia Keys"], ["🧊 🧊 👶 🎤", "Ice Ice Baby", "Vanilla Ice"], ["🎂 🍰 🌊 🏖️", "Cake by the Ocean", "DNCE"], ["🚀 👨 🌙 ⭐", "Rocket Man", "Elton John"], ["💜 ☔ 🌧️ 👑", "Purple Rain", "Prince"], ["🖤 🟡 🖤 🟡", "Black and Yellow", "Wiz Khalifa"], ["☀️ 🚶‍♂️ 😊 🎶", "Walking on Sunshine", "Katrina and the Waves"], ["👶 👶 👶 🔙", "Baby Got Back", "Sir Mix-a-Lot"], ["💰 💰 💰 👩", "Money, Money, Money", "ABBA"], ["🕺 🌙 ⭐ 🌃", "Dancing in the Moonlight", "Toploader"], ["🙋 ❤️ 🪨 🎸", "I Love Rock 'n' Roll", "Joan Jett & the Blackhearts"]];
+</script>
 <script>
 "use strict";
 const D=window.GAME_DATA;
-if(D&&D.teams&&D.teams.team1&&D.teams.team1.players) D.teams.team1.players=String(D.teams.team1.players).replace(/\s*[·,/]?\s*Kay\s*/g," ").trim();
+if(D&&D.teams){
+  if(D.teams.team1) D.teams.team1.players = ["Stefan","Andre","Michel"].concat(KLEMM_DABEI?["Klemm"]:[]).join(" · ");
+  if(D.teams.team2) D.teams.team2.players = ["Markus","Fabian","Mario"].join(" · ");
+  if(D.teams.team3) D.teams.team3.players = ["Swen","Kevin","Patrick"].join(" · ");
+}
 // v27 Listen-Lotto-Fortschritt + Quiz-Punktestand/Auto-Auflösung.
 // v26 Listen-Lotto-Datenfix: Bei Ein-Buchstaben-KFZ werden die Staedte geraten; fehlender Bond-Titel ergaenzt.
 (()=>{
@@ -328,15 +362,23 @@ if(!Array.isArray(D.emoji)){
   ];
 }
 const $=id=>document.getElementById(id);
+const KLEMM_DABEI = localStorage.getItem("kroatien_klemm_dabei") !== "0";
+function setKlemmDabei(v){
+  localStorage.setItem("kroatien_klemm_dabei", v ? "1" : "0");
+  location.reload();
+}
+function activeCount(n){ return KLEMM_DABEI ? n : n-1; }
+
 let peer=null, conns={}, conn=null, role=null, room=null, modeName="quiz";
 // v29 Higher or Lower – eigenständiges Einzelspiel innerhalb der Haupt-App
-const HL_NAMES=["Kevin","Markus","Stefan","Michel","Patrick","Mario","Fabian","Timo","Andre","Klemm","Swen","Jan"];
+const HL_NAMES=["Kevin","Markus","Stefan","Michel","Patrick","Mario","Fabian","Andre","Klemm","Swen","Jan"].filter(n=>KLEMM_DABEI||n!=="Klemm");
 
 const TT_TEAMS={
-  "Kevin":"team1","Markus":"team1","Stefan":"team1",
-  "Michel":"team2","Patrick":"team2","Mario":"team2","Fabian":"team2",
-  "Timo":"team3","Andre":"team3","Klemm":"team3","Swen":"team3"
+  "Stefan":"team1","Andre":"team1","Michel":"team1",
+  "Markus":"team2","Fabian":"team2","Mario":"team2",
+  "Swen":"team3","Kevin":"team3","Patrick":"team3"
 };
+if(KLEMM_DABEI) TT_TEAMS["Klemm"]="team1";
 const TT_PLAYERS_MASTER=[
 {name:"Thomas Müller",stages:[["1993–2000","Jugend","TSV Pähl"],["2000–2008","Jugend","FC Bayern München"],["2007–2009","","FC Bayern München II"],["2008–2025","","FC Bayern München"],["2025–heute","","Vancouver Whitecaps"]]},
 {name:"Michael Ballack",stages:[["1983–1988","Jugend","BSG Motor „Fritz Heckert“ Karl-Marx-Stadt"],["1988–1995","Jugend","FC Karl-Marx-Stadt / Chemnitzer FC"],["1995–1997","","Chemnitzer FC"],["1997–1999","","1. FC Kaiserslautern"],["1999–2002","","Bayer 04 Leverkusen"],["2002–2006","","FC Bayern München"],["2006–2010","","FC Chelsea"],["2010–2012","","Bayer 04 Leverkusen"]]},
@@ -1082,8 +1124,8 @@ const TOUR_ROUNDS=[{"place":"Stuttgart","year":2023,"img":"tour_12.jpg"},{"place
 
 let tourIdx=0,tourPhase="idle",tourScores={},tourLocationWinner=null,tourStandingsShown=false;
 
-// Bettgeflüster: Jan und Fabian sind fest zusammen und spielen nicht mit. Kay fährt nicht mit.
-const ZG_PLAYERS=["Kevin","Markus","Stefan","Michel","Patrick","Mario","Timo","Andre","Klemm","Swen"];
+// Bettgeflüster: 11 Reisende; Kay und Timo fahren nicht mit. Zwei vor Ort wählbare Zimmer-Varianten.
+const ZG_PLAYERS=["Kevin","Markus","Stefan","Michel","Patrick","Mario","Andre","Klemm","Swen"].filter(n=>KLEMM_DABEI||n!=="Klemm");
 const ZG_ROUNDS=[
   {title:"Runde 1 · Higher or Lower – Bedtime Stories",question:"Alle starten mit 3 Leben. Falsch oder keine Antwort = 1 Leben weg. Gespielt wird bis genau ein Sieger übrig bleibt."},
   {title:"Runde 2 · Dicht daneben",question:"Wie weit ist es ungefähr Luftlinie von Zadar bis zum Nordpol?",unit:"km",solution:5101},
@@ -1091,7 +1133,8 @@ const ZG_ROUNDS=[
   {title:"Runde 4 · Dinara",question:"Wie hoch ist der höchste Berg Kroatiens, der Berg Dinara?",unit:"m",solution:1831},
   {title:"Runde 5 · Reaktionsblitz",question:"Warte auf JETZT! und drücke dann so schnell wie möglich."}
 ];
-let zgRound=0, zgPhase="idle", zgAnswers={}, zgDuos=[], zgOut=new Set(), zgWinner=null;
+let zgRound=0, zgPhase="chooseVariant", zgAnswers={}, zgDuos=[], zgOut=new Set(), zgWinner=null;
+let zgVariant=KLEMM_DABEI?null:"noKlemm", zgSingles=[], zgCouch=null;
 let zgClientState={round:null,phase:"idle",submitted:false,localStart:0,reactionTimer:null,reactionGoAt:0};
 let zgLive={};
 let zgHl=null, zgHlTimer=null;
@@ -1586,7 +1629,6 @@ function setMode(m){
   if(m==="zimmer"){
     ZG_PLAYERS.forEach(n=>zgSend(n,{type:"zgState",round:zgRound,phase:(zgOut.has(n)?"paired":"ready"),title:ZG_ROUNDS[zgRound].title,question:ZG_ROUNDS[zgRound].question}));
     zgSend("Fabian",{type:"zgState",round:zgRound,phase:"excluded",title:"🏨 Bettgeflüster"});
-    zgSend("Kay",{type:"zgState",round:zgRound,phase:"excluded",title:"🏨 Bettgeflüster"});
   }
   if(m==="emoji" && !["idle","title","artist","done"].includes(emojiPhase)) resetEmojiRound();
   renderHost();
@@ -1633,6 +1675,7 @@ function adjustManualPoint(team,delta){
 
 function hostRulesHtml(mode){
   const R={
+    absprung:{name:"Absprung",who:"Einzelspieler",buzz:"Nein",text:"Die Spieler springen nacheinander digital über Kroatien ab. Jeder öffnet seinen Fallschirm selbst. Bei der Landung wird das Team aufgedeckt."},
     quiz:{name:"Adria-Abitur",who:"Kapitäne",buzz:"Nein",text:"20 Kroatien-Fragen. Alle drei Teams antworten gleichzeitig über ihre Kapitäne. Pro Frage laufen 30 Sekunden. Richtige Antwort = 1 Punkt. Sobald alle Teams geantwortet haben, wird automatisch aufgelöst."},
     estimate:{name:"Dicht daneben",who:"Kapitäne",buzz:"Nein",text:"Alle drei Kapitäne geben gleichzeitig eine Schätzung in Kilometern ab. Pro Frage laufen 60 Sekunden. Bei der Auflösung sehen Spielleiter, Kapitäne und TV/Zuschauer die richtige Zahl, jede Schätzung und die jeweilige Differenz. Nächstes Team = 2 Punkte, zweites = 1 Punkt, drittes = 0."},
     category:{name:"Listen-Lotto",who:"Kapitäne",buzz:"Nein",text:"Die Teams spielen nacheinander. Das aktive Team hat 35 Sekunden für einen gültigen Begriff. Richtige Antwort = nächstes noch aktives Team wird automatisch ausgewählt. Falsche Antwort = Team ist für die Kategorie raus und nicht mehr auswählbar. Im Dropdown wird das zuletzt antwortende Team markiert. Letztes Team gewinnt die Kategorie."},
@@ -1643,14 +1686,109 @@ function hostRulesHtml(mode){
     transfertinder:{name:"Transfer-Tinder",who:"Einzelspieler",buzz:"Ja",text:"Die Karrierestationen eines Fußballers werden nacheinander aufgedeckt. Alle Einzelspieler dürfen auf ihrem Handy für ihr Team buzzern und sagen die Lösung laut. Nach dem Buzz: 10 Sekunden. Richtig = 1 Punkt für das Team. Falsch = komplettes Team für diesen Fußballer raus. „Lösen / Auflösen“ zeigt alle Stationen ohne Punkt."},
     buzzer:{name:"Buzzer",who:"Einzelspieler",buzz:"Ja",text:"Alle Einzelspieler buzzern auf dem eigenen Handy. Die Reihenfolge wird gespeichert. Der Erste hat 10 Sekunden zum Antworten. Bei einer falschen Antwort ist automatisch der nächste Spieler in der Buzzer-Reihenfolge dran."},
     tourpics:{name:"Blackout-Bilder",who:"Kapitäne",buzz:"Ja",text:"Die Teams beraten gemeinsam, nur die Kapitäne buzzern. Das Foto wird auf TV/Zuschauer und bei den Kapitänen gezeigt. Richtiger Ort = 2 Punkte. Danach darf dasselbe Team das Jahr raten; richtiges Jahr = +1 Punkt."},
-    zimmer:{name:"Bettgeflüster",who:"Einzelspieler",buzz:"Nein",text:"Jan und Fabian sind fest zusammen; Kay fährt nicht mit. Die 10 übrigen Spieler spielen fünf Runden. Runde 1 ist Higher or Lower – Bedtime Stories mit 3 Leben pro Spieler und Sudden Death bei gleichzeitigem Ausscheiden. Der Sieger jeder Runde wählt einen Zimmerpartner; danach ist das Paar raus. Keine Couch."},
+    zimmer:{name:"Bettgeflüster",who:"Einzelspieler",buzz:"Nein",text:(KLEMM_DABEI
+      ?"Klemm dabei: Vor Ort zwischen Variante 1 (Couch gut: Jan und Fabian je Einzelzimmer; 4 Doppelzimmer + 1 Couch) und Variante 2 (Couch schlecht: Jan + Fabian zusammen; 4 Doppelzimmer + 1 Einzelzimmer) wählen."
+      :"Klemm fällt aus: Variante 3 wird automatisch verwendet. Jan und Fabian bekommen jeweils ein Einzelzimmer; die übrigen 8 Spieler bilden 4 Doppelzimmer. Couch egal.")+" Runde 1 ist Higher or Lower – Bedtime Stories mit 3 Leben und Sudden Death."},
     promimix:{name:"Promi-Mix",who:"Einzelspieler / Zuschauer",buzz:"Nein",text:"Das KI-Mix-Bild wird Stück für Stück aufgedeckt. Sobald die Kombination erkannt wird, löst der Spielleiter auf und zeigt anschließend die Originalbilder."}
   };
   const r=R[mode]; if(!r)return "";
   return "<div class='status' style='border:2px solid #17324d;background:#f7fafc;margin-bottom:10px'><div style='font-size:19px;font-weight:900'>📣 "+r.name+"</div><div style='display:flex;gap:7px;flex-wrap:wrap;margin:8px 0'><span class='pill'>👥 "+r.who+"</span><span class='pill'>🔴 Buzzer: "+r.buzz+"</span></div><div style='line-height:1.4'>"+r.text+"</div></div>";
 }
 
+
+// ===== ABSPRUNG – Team-Auslosung =====
+// Die Spieler erleben eine zufällige Reihenfolge und Landungsanimation.
+// Die Zielzuordnung wird nur intern verwendet und niemals vorab an Clients gesendet.
+const DROP_CODE = {
+  "Stefan":"A","Andre":"A","Michel":"A","Klemm":"A",
+  "Markus":"B","Fabian":"B","Mario":"B",
+  "Swen":"C","Kevin":"C","Patrick":"C"
+};
+const DROP_TEAM={A:"team1",B:"team2",C:"team3"};
+let dropOrder=[],dropIndex=0,dropResults=[],dropPhase="idle",dropCurrent=null,dropTimer=null;
+
+function dropActivePlayers(){
+  return Object.keys(DROP_CODE).filter(n=>KLEMM_DABEI||n!=="Klemm");
+}
+function dropShuffle(a){
+  a=[...a];
+  for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}
+  return a;
+}
+function dropStart(){
+  dropOrder=dropShuffle(dropActivePlayers());dropIndex=0;dropResults=[];dropPhase="ready";dropCurrent=dropOrder[0]||null;renderHost();
+}
+function dropOpen(){
+  if(!dropCurrent||dropPhase!=="ready")return;
+  dropPhase="falling";renderHost();
+  clearTimeout(dropTimer);
+  dropTimer=setTimeout(()=>{dropPhase="revealed";dropResults.push([dropCurrent,DROP_TEAM[DROP_CODE[dropCurrent]]]);renderHost();},2300);
+}
+function dropNext(){
+  if(dropPhase!=="revealed")return;
+  dropIndex++;
+  if(dropIndex>=dropOrder.length){dropCurrent=null;dropPhase="finished";}
+  else {dropCurrent=dropOrder[dropIndex];dropPhase="ready";}
+  renderHost();
+}
+function dropReset(){
+  clearTimeout(dropTimer);dropOrder=[];dropIndex=0;dropResults=[];dropPhase="idle";dropCurrent=null;renderHost();
+}
+function dropTeamName(t){return t==="team1"?"TEAM 1":t==="team2"?"TEAM 2":"TEAM 3";}
+function dropRosterHtml(){
+  const groups={team1:[],team2:[],team3:[]};
+  dropResults.forEach(([n,t])=>groups[t].push(n));
+  return "<div class='grid'>"+["team1","team2","team3"].map(t=>"<div class='status'><b>"+dropTeamName(t)+"</b><br>"+(groups[t].length?groups[t].join(" · "):"—")+"</div>").join("")+"</div>";
+}
+function dropHostHtml(){
+  if(dropPhase==="idle"){
+    return "<div class='card'><h2>🪂 ABSPRUNG</h2><div class='status'>"+dropActivePlayers().length+" Spieler springen über Kroatien ab. Einer nach dem anderen entscheidet selbst, wann der Fallschirm geöffnet wird. Erst bei der Landung wird das Team sichtbar.</div>"+
+      "<div class='status'><b>"+(KLEMM_DABEI?"Klemm ist dabei · 4 / 3 / 3":"Klemm fällt aus · 3 / 3 / 3")+"</b></div>"+
+      "<button id='dropStart' class='good' style='width:100%;font-size:22px'>✈️ FLUG STARTEN</button></div>";
+  }
+  const landed=dropResults.find(x=>x[0]===dropCurrent);
+  const revealedTeam=landed?landed[1]:null;
+  let h="<div class='card'><h2>🪂 ABSPRUNG</h2><div class='pill'>SPRUNG "+Math.min(dropIndex+1,dropOrder.length)+" / "+dropOrder.length+"</div>";
+  if(dropPhase==="finished"){
+    h+="<div class='drop-reveal'>🏁 ALLE SIND GELANDET</div>"+dropRosterHtml()+
+       "<button id='dropReset' class='danger' style='width:100%;margin-top:12px'>NEU STARTEN</button></div>";
+    return h;
+  }
+  h+="<div class='drop-stage'><div class='drop-sun'>☀️</div><div class='drop-cloud' style='left:18%;top:55px'>☁️</div><div class='drop-cloud' style='left:67%;top:105px'>☁️</div>"+
+     "<div class='drop-plane'>✈️</div><div class='drop-person "+(dropPhase==="falling"?"falling":dropPhase==="revealed"?"landed":"")+"'>"+(dropPhase==="revealed"?"<span class='drop-chute'>🪂</span>":"🧍")+"</div>"+
+     "<div class='drop-teams'><div class='drop-zone'>🏖️ LANDZONE</div><div class='drop-zone'>🌴 LANDZONE</div><div class='drop-zone'>🍺 LANDZONE</div></div></div>"+
+     "<div class='drop-reveal'>"+dropCurrent+"</div>";
+  if(dropPhase==="ready"){
+    h+="<div class='status' style='text-align:center'>Im freien Fall …<br><b>"+dropCurrent+" entscheidet, wann geöffnet wird.</b></div>"+
+       "<button id='dropOpen' class='good' style='width:100%;font-size:24px;min-height:75px'>🪂 FALLSCHIRM ÖFFNEN!</button>";
+  }else if(dropPhase==="falling"){
+    h+="<div class='status' style='text-align:center;font-size:22px'><b>🪂 SCHIRM OFFEN – LANDUNG …</b></div>";
+  }else if(dropPhase==="revealed"){
+    h+="<div class='status ok' style='text-align:center;font-size:28px'><b>"+dropCurrent+" landet in "+dropTeamName(revealedTeam)+"!</b></div>"+
+       dropRosterHtml()+"<button id='dropNext' class='good' style='width:100%;font-size:20px'>NÄCHSTER SPRINGER →</button>";
+  }
+  h+="<button id='dropReset' class='danger' style='width:100%;margin-top:12px'>ABSPRUNG ZURÜCKSETZEN</button></div>";
+  return h;
+}
+
 function renderHost(){
+  if(modeName==="absprung"){
+    $("hostGame").innerHTML=dropHostHtml();
+    const a=$("dropStart"),b=$("dropOpen"),c=$("dropNext"),d=$("dropReset");
+    if(a)a.onclick=dropStart;if(b)b.onclick=dropOpen;if(c)c.onclick=dropNext;if(d)d.onclick=dropReset;
+    return;
+  }
+  if(modeName==="setup"){
+    const cnt=KLEMM_DABEI?10:9;
+    $("hostGame").innerHTML="<div class='card'><h2>⚙️ REISE-SETUP</h2>"+
+      "<div class='status "+(KLEMM_DABEI?"ok":"bad")+"'><b>Klemm: "+(KLEMM_DABEI?"DABEI":"FÄLLT AUS")+"</b><br>"+
+      (KLEMM_DABEI?"10 Teamspieler · Teamgrößen 4 / 3 / 3":"9 Teamspieler · Teamgrößen 3 / 3 / 3")+"</div>"+
+      "<p class='muted'>Dieser Schalter passt Klemm zentral für Spielerlisten, Einzelspiele, Transfer-Tinder, Buzzer, Bettgeflüster und Teamanzeige an. Die Einstellung bleibt nach einem Browser-Neustart gespeichert.</p>"+
+      "<div class='grid'><button id='klemmYes' class='good'>✓ KLEMM DABEI</button><button id='klemmNo' class='danger'>✕ KLEMM FÄLLT AUS</button></div>"+
+      "<div class='status' style='margin-top:12px'><b>Aktuelle Teamgrößen:</b> "+(KLEMM_DABEI?"4 / 3 / 3":"3 / 3 / 3")+"</div></div>";
+    const y=$("klemmYes"),n=$("klemmNo"); if(y)y.onclick=()=>setKlemmDabei(true); if(n)n.onclick=()=>setKlemmDabei(false);
+    return;
+  }
   if(modeName==="quotenkoma"){ $("hostGame").innerHTML=qkHostHtml(); qkBindHost(); qkBroadcast(); return; }
   let h="";
   if(modeName==="quiz"){
@@ -1733,7 +1871,7 @@ function renderHost(){
   }
 
   if(modeName==="buzzer"){
-    h="<div class='card'><h2>🔴 Buzzer</h2><p class='muted'>Alle 12 Spieler buzzern auf dem eigenen Handy. Die Reihenfolge bleibt erhalten, damit bei einer falschen Antwort der Nächste dran ist.</p><div class='grid'><button id='buzzOpenBtn' class='good'>BUZZER FREIGEBEN</button><button id='buzzCloseBtn' class='secondary'>SPERREN</button><button id='buzzResetBtn' class='danger'>NEUE RUNDE</button></div><h3>Reihenfolge</h3>"+(buzzOrder.length?buzzOrder.map((n,i)=>"<div class='status' style='font-size:"+(i===0?26:18)+"px'><b>"+(i+1)+". "+n+"</b></div>").join(""):"<div class='status'>Noch niemand gebuzzert.</div>")+"<div id='buzzTurnBox'>"+(buzzOrder.length?"<div class='status ok' style='font-size:24px'><b>Antwortet: "+buzzOrder[Math.min(buzzAnswerIndex,buzzOrder.length-1)]+"</b><div id='buzzAnswerCountdown' class='big' style='font-size:42px'>"+(buzzAnswerEnd?Math.max(0,Math.ceil((buzzAnswerEnd-Date.now())/1000)):"10")+"</div></div>":"")+"</div>"+
+    h="<div class='card'><h2>🔴 Buzzer</h2><p class='muted'>Alle "+(KLEMM_DABEI?"10":"9")+" Teamspieler buzzern auf dem eigenen Handy. Die Reihenfolge bleibt erhalten, damit bei einer falschen Antwort der Nächste dran ist.</p><div class='grid'><button id='buzzOpenBtn' class='good'>BUZZER FREIGEBEN</button><button id='buzzCloseBtn' class='secondary'>SPERREN</button><button id='buzzResetBtn' class='danger'>NEUE RUNDE</button></div><h3>Reihenfolge</h3>"+(buzzOrder.length?buzzOrder.map((n,i)=>"<div class='status' style='font-size:"+(i===0?26:18)+"px'><b>"+(i+1)+". "+n+"</b></div>").join(""):"<div class='status'>Noch niemand gebuzzert.</div>")+"<div id='buzzTurnBox'>"+(buzzOrder.length?"<div class='status ok' style='font-size:24px'><b>Antwortet: "+buzzOrder[Math.min(buzzAnswerIndex,buzzOrder.length-1)]+"</b><div id='buzzAnswerCountdown' class='big' style='font-size:42px'>"+(buzzAnswerEnd?Math.max(0,Math.ceil((buzzAnswerEnd-Date.now())/1000)):"10")+"</div></div>":"")+"</div>"+
       (buzzOrder.length?"<div class='grid'><button id='buzzWrongBtn' class='danger'>FALSCH → NÄCHSTER</button><button id='buzzRightBtn' class='good'>RICHTIG ✓</button></div>":"")+
       "<p><b>Status:</b> "+(buzzOpen?"🟢 Buzzer offen":"🔒 Buzzer gesperrt")+"</p></div>";
   }
@@ -1807,6 +1945,8 @@ function bindHostControls(){
   const en=$("emojiNext"); if(en)en.addEventListener("click",()=>changeEmoji(1));
   const zstart=$("zgStart"); if(zstart)zstart.addEventListener("click",zgStartRound);
   const zreveal=$("zgReveal"); if(zreveal)zreveal.addEventListener("click",zgRevealRound);
+  const zvc=$("zgVariantCouch"); if(zvc)zvc.addEventListener("click",()=>{zgVariant="couch";zgPhase="idle";zgRound=0;renderHost();});
+  const zvs=$("zgVariantSingle"); if(zvs)zvs.addEventListener("click",()=>{zgVariant="single";zgPhase="idle";zgRound=0;renderHost();});
   const zpair=$("zgPair"); if(zpair)zpair.addEventListener("click",zgConfirmPair);
   const znext=$("zgNext"); if(znext)znext.addEventListener("click",zgNextRound);
   const zhlNext=$("zgHlNext"); if(zhlNext)zhlNext.addEventListener("click",zgHlNextQuestion);
@@ -2002,36 +2142,72 @@ function emojiManualArtistReveal(){
 }
 function zgHostHtml(){
   const rem=zgRemaining(), round=ZG_ROUNDS[zgRound];
+
+  // Variante 3 wird bei Klemm-Ausfall automatisch gesetzt:
+  // Jan und Fabian jeweils Einzelzimmer, 8 Spieler -> 4 Doppelzimmer.
+  if(!KLEMM_DABEI && zgVariant!=="noKlemm"){
+    zgVariant="noKlemm"; zgPhase="idle"; zgRound=0; zgAnswers={}; zgDuos=[]; zgOut=new Set(); zgWinner=null; zgHl=null; zgSingles=[]; zgCouch=null;
+  }
+
+  if(KLEMM_DABEI && !zgVariant){
+    return "<div class='card'><h2>🏨 BETTGEFLÜSTER</h2>"+
+      "<div class='status' style='text-align:left'><b>11 Mann · Klemm ist dabei</b><br>"+
+      "Jan und Fabian spielen nicht mit. Wähle vor Ort nur noch, ob die Couch akzeptabel ist.</div>"+
+      "<div class='grid'>"+
+      "<button id='zgVariantCouch' class='good' style='min-height:105px'><b>🛋️ VARIANTE 1 · COUCH GUT</b><br><span style='font-size:14px'>Jan & Fabian je Einzelzimmer · 4 Doppelzimmer · 1 Couch</span></button>"+
+      "<button id='zgVariantSingle' class='secondary' style='min-height:105px'><b>🛏️ VARIANTE 2 · COUCH SCHLECHT</b><br><span style='font-size:14px'>Jan + Fabian zusammen · 4 Doppelzimmer · 1 Einzelzimmer</span></button>"+
+      "</div><div class='status'>Die Auswahl kann über „Komplett zurücksetzen“ wieder geändert werden.</div></div>";
+  }
+
+  const variantText =
+    zgVariant==="couch"
+      ? "🛋️ <b>VARIANTE 1 · COUCH GUT:</b> Jan und Fabian bekommen jeweils ein Zimmer für sich. Die 9 Spieler bilden 4 Doppelzimmer; der letzte übrige Spieler bekommt die Couch."
+      : zgVariant==="single"
+        ? "🛏️ <b>VARIANTE 2 · COUCH SCHLECHT:</b> Jan + Fabian schlafen zusammen. Die 9 Spieler bilden 4 Doppelzimmer; ein Spieler bekommt ein Einzelzimmer. „Einzelzimmer“ bleibt bei der Partnerwahl verfügbar, bis es vergeben wurde."
+        : "🛏️ <b>VARIANTE 3 · KLEMM RAUS:</b> Jan und Fabian bekommen jeweils ein Zimmer für sich. Die übrigen 8 Spieler bilden 4 Doppelzimmer. Die Couch spielt keine Rolle.";
+
   let body="<div class='card'><h2>🏨 BETTGEFLÜSTER</h2>"+
-    "<div class='status' style='text-align:left'><b>Regeln Bettgeflüster</b><br>• <b>Jan + Fabian</b> sind bereits ein Zimmerteam und spielen nicht mit.<br>• <b>Kay fährt nicht mit.</b> Damit spielen 10 Spieler um 5 weitere Zimmerteams.<br>• Der Sieger jeder Runde darf sich <b>einen Zimmerpartner aussuchen</b>. Beide sind danach raus.<br>• <b>Keine Couch:</b> Am Ende sind alle 12 Reisenden auf 6 Zimmerteams verteilt.<br>• Runde 1 ist <b>Higher or Lower – Bedtime Stories</b>: jeder startet mit 3 Leben; gespielt wird bis genau ein Sieger übrig bleibt.</div>"+
+    "<div class='status' style='text-align:left'>"+variantText+"<br>• Runde 1 ist <b>Higher or Lower – Bedtime Stories</b>: jeder startet mit 3 Leben.<br>• Der Gewinner wählt anschließend seinen Zimmerpartner"+(zgVariant==="single"?" oder das <b>Einzelzimmer</b>":"")+".<br>• Bereits verteilte Spieler sehen das weitere Spiel nur noch als Zuschauer.</div>"+
     "<div class='zg-rounds'>"+ZG_ROUNDS.map((r,i)=>"<div class='zg-round "+(i===zgRound?"active":i<zgRound?"done":"")+"'>"+(i+1)+". "+r.title.split("·").pop().trim()+"</div>").join("")+"</div>"+
-    zgDuoHtml()+"<div class='status'><b>Noch im Spiel ("+rem.length+"):</b> "+rem.map(zgEsc).join(", ")+"</div>"+
+    zgDuoHtml()+
+    (zgSingles.length?"<div class='status ok'><b>🛏️ Einzelzimmer:</b> "+zgEsc(zgSingles[0])+"</div>":"")+
+    (zgCouch?"<div class='status ok'><b>🛋️ Couch:</b> "+zgEsc(zgCouch)+"</div>":"")+
+    "<div class='status'><b>Noch im Spiel ("+rem.length+"):</b> "+(rem.length?rem.map(zgEsc).join(", "):"—")+"</div>"+
     "<h2>"+round.title+"</h2><div class='status' style='font-size:20px'><b>"+round.question+"</b></div>";
-  if(zgRound===0){
-    body+="<div class='status'><b>Higher or Lower:</b> Alle aktiven Spieler antworten gleichzeitig. 30 Sekunden je Frage. Falsch oder keine Antwort = 1 Leben weg. Wenn alle verbliebenen Spieler in derselben Frage ihr letztes Leben verlieren würden, startet Sudden Death: alle Betroffenen bleiben mit 1 Leben drin, bis genau ein Sieger feststeht.</div>";
+
+  if(zgPhase==="finished"){
+    body+="<div class='status ok' style='font-size:24px;text-align:center'><b>🏁 ALLE SCHLAFPLÄTZE STEHEN!</b></div>";
+  }else if(zgRound===0){
+    body+="<div class='status'><b>Higher or Lower:</b> Alle aktiven Spieler antworten gleichzeitig. 30 Sekunden je Frage. Falsch oder keine Antwort = 1 Leben weg. Wenn alle verbliebenen Spieler in derselben Frage ihr letztes Leben verlieren würden, startet Sudden Death.</div>";
     if(!zgHl || zgPhase==="idle" || zgPhase==="ready") body+="<button id='zgStart' class='good' style='width:100%;font-size:20px'>HIGHER OR LOWER STARTEN</button>";
     else if(zgPhase==="hlQuestion"){
-      const q=zgHl.deck[zgHl.idx], secs=Math.max(0,Math.ceil((zgHl.end-Date.now())/1000));
-      body+=zgHlScoreHtml()+"<div class='big' style='font-size:32px;margin:18px 0'>"+q.q+"</div>"+(q.period?"<div class='muted'>(Zeitraum: "+q.period+")</div>":"")+"<div class='muted'>Höher oder niedriger als:</div><div class='big' style='font-size:52px'>"+hlFmt(q.t,q.u)+"</div><div class='status ok'><b>🔐 Lösung: "+hlFmt(q.a,q.u)+"</b></div><div class='timer'>"+secs+"</div><div class='status'>"+zgHlAlive().map(n=>(zgHl.answers[n]?"✅ ":"⏳ ")+n).join(" · ")+"</div>";
-    } else if(zgPhase==="hlResult"){
-      body+=zgHlScoreHtml()+"<div class='big' style='font-size:44px;text-align:center'>Antwort "+zgHl.actual+"</div>"+(zgHl.result||[]).map(x=>"<div class='status'>"+x+"</div>").join("")+(zgHl.sudden?"<div class='status bad'><b>⚡ SUDDEN DEATH!</b><br>Alle wären gleichzeitig ausgeschieden. Die verbliebenen Spieler gehen mit 1 Leben weiter.</div>":"")+"<button id='zgHlNext' class='good' style='width:100%'>NÄCHSTE FRAGE →</button>";
-    } else if(zgPhase==="revealed") body+=zgWinnerPairHtml(rem);
+      const q=zgHl.deck[zgHl.idx];
+      body+="<div class='card'><h3>Aktuelle Frage</h3><div class='status'><b>"+zgEsc(q.q)+"</b><br><span class='muted'>Höher oder niedriger als</span><div class='big'>"+zgEsc(hlFmt(q.t,q.u))+"</div></div></div>";
+    }else if(zgPhase==="hlResult"){
+      body+="<div class='card'><h3>Auflösung</h3><div class='big'>"+zgEsc(zgHl.actual||"")+"</div>"+(zgHl.result||[]).map(x=>"<div class='status'>"+zgEsc(x)+"</div>").join("")+"<button id='zgHlNext' class='good' style='width:100%'>NÄCHSTE FRAGE</button></div>";
+    }else if(zgPhase==="revealed") body+=zgWinnerPairHtml(rem);
     else if(zgPhase==="paired") body+=zgPairedHtml();
-  } else {
-    if(zgRound===1) body+="<div class='status'><b>Lösung:</b> ca. 5.101 km</div>";
-    if(zgRound===2) body+="<div class='status'><b>Ziel:</b> exakt 10,00 Sekunden · Zeit ist während des Laufs unsichtbar.</div>";
-    if(zgRound===3) body+="<div class='status'><b>Lösung:</b> 1.831 m<br><span class='muted'>Überboten = immer hinter jeder gültigen Schätzung ≤ 1.831 m.</span></div>";
-    if(zgRound===4) body+="<div class='status'><b>Regel:</b> Auf jedem Handy erscheint JETZT! nach zufälliger Wartezeit. Frühstart = +1.000 ms Strafzeit.</div>";
-    if(zgPhase==="idle"||zgPhase==="ready") body+="<button id='zgStart' class='good' style='width:100%;font-size:20px'>RUNDE STARTEN</button>";
-    else if(zgPhase==="playing") body+="<div class='status ok'><b>RUNDE LÄUFT</b><br>"+rem.map(n=>(zgAnswers[n]!==undefined?"✅ ":"⏳ ")+zgEsc(n)).join(" · ")+"</div><button id='zgReveal' class='secondary' style='width:100%'>JETZT AUSWERTEN</button>"+zgLiveHostHtml();
+  }else{
+    if(zgPhase==="idle"||zgPhase==="ready") body+="<button id='zgStart' class='good' style='width:100%'>RUNDE STARTEN</button>";
+    else if(zgPhase==="playing") body+=zgLiveHostHtml()+"<button id='zgReveal' class='secondary' style='width:100%'>RUNDE AUFLÖSEN</button>";
     else if(zgPhase==="revealed") body+=zgRankingHtml()+zgWinnerPairHtml(rem);
     else if(zgPhase==="paired") body+=zgPairedHtml();
   }
   body+="<details style='margin-top:18px'><summary><b>Bettgeflüster zurücksetzen</b></summary><button id='zgReset' class='danger' style='width:100%;margin-top:10px'>KOMPLETT ZURÜCKSETZEN</button></details></div>";
   return body;
 }
-function zgWinnerPairHtml(rem){return "<div class='card'><h3>🏆 "+zgEsc(zgWinner)+" darf den Zimmerpartner wählen</h3><select id='zgPartner' style='width:100%'>"+rem.filter(n=>n!==zgWinner).map(n=>"<option>"+zgEsc(n)+"</option>").join("")+"</select><button id='zgPair' class='good' style='width:100%;margin-top:10px'>ZIMMERTEAM FESTLEGEN</button></div>";}
-function zgPairedHtml(){const last=zgDuos.at(-1);return "<div class='status ok' style='font-size:22px;text-align:center'><b>Zimmerteam "+zgDuos.length+" steht:</b><br>"+zgEsc(last[0])+" + "+zgEsc(last[1])+"</div>"+(zgDuos.length<5?"<button id='zgNext' style='width:100%'>NÄCHSTE RUNDE →</button>":"<div class='status ok' style='font-size:26px;text-align:center'><b>🏁 ALLE ZIMMER STEHEN!</b><br>Jan + Fabian sowie die fünf ausgespielten Paare. Keine Couch.</div>");}
+function zgWinnerPairHtml(rem){
+  const singleOption=(KLEMM_DABEI && zgVariant==="single" && zgSingles.length===0)?"<option value='__SINGLE__'>🛏️ Einzelzimmer</option>":"";
+  return "<div class='card'><h3>🏆 "+zgEsc(zgWinner)+" darf wählen</h3><select id='zgPartner' style='width:100%'>"+
+    singleOption+rem.filter(n=>n!==zgWinner).map(n=>"<option>"+zgEsc(n)+"</option>").join("")+
+    "</select><button id='zgPair' class='good' style='width:100%;margin-top:10px'>AUSWAHL FESTLEGEN</button></div>";
+}
+function zgPairedHtml(){
+  let last="";
+  if(zgSingles.length && zgOut.has(zgSingles[0]) && zgWinner===zgSingles[0]) last="<div class='status ok' style='font-size:22px;text-align:center'><b>🛏️ Einzelzimmer:</b><br>"+zgEsc(zgSingles[0])+"</div>";
+  else if(zgDuos.length){const d=zgDuos.at(-1);last="<div class='status ok' style='font-size:22px;text-align:center'><b>Zimmerteam "+zgDuos.length+" steht:</b><br>"+zgEsc(d[0])+" + "+zgEsc(d[1])+"</div>";}
+  return last+(zgPhase==="finished"?"<div class='status ok' style='font-size:26px;text-align:center'><b>🏁 ALLE SCHLAFPLÄTZE STEHEN!</b></div>":"<button id='zgNext' style='width:100%'>NÄCHSTE RUNDE →</button>");
+}
 function zgHlAlive(){return zgHl?zgRemaining().filter(n=>(zgHl.lives[n]||0)>0):[];}
 function zgHlScoreHtml(){if(!zgHl)return "";return "<div class='tour-score'>"+zgRemaining().map(n=>"<div class='status' style='"+((zgHl.lives[n]||0)<=0?"opacity:.45;":"")+"'><b>"+zgEsc(n)+"</b><br><span style='font-size:22px'>"+"❤️".repeat(zgHl.lives[n]||0)+"🖤".repeat(3-(zgHl.lives[n]||0))+"</span>"+((zgHl.lives[n]||0)<=0?"<br><b>RAUS</b>":"")+"</div>").join("")+"</div>";}
 function zgHlStart(){const rem=zgRemaining();zgHl={lives:{},deck:hlbDeck(),idx:0,answers:{},result:null,actual:null,end:0,sudden:false};rem.forEach(n=>zgHl.lives[n]=3);zgHlBeginQuestion();}
@@ -2044,11 +2220,56 @@ function zgRanking(){const rem=zgRemaining();if(zgRound===1)return rem.map(n=>({
 function zgRankingHtml(){const rank=zgRanking();return "<div class='card'><h3>Rangliste</h3>"+rank.map((x,i)=>{let val="";if(zgRound===1)val=Number(x.value).toLocaleString("de-DE")+" km · Δ "+Math.round(x.score).toLocaleString("de-DE")+" km";if(zgRound===2)val=(Number(x.value)/1000).toFixed(2).replace(".",",")+" s · Δ "+(x.score/1000).toFixed(2).replace(".",",")+" s";if(zgRound===3)val=Number(x.value).toLocaleString("de-DE")+" m"+(!x.valid?" · ❌ ÜBERBOTEN":" · Δ "+Math.round(x.score)+" m");if(zgRound===4)val=(Number(x.value)/1000).toFixed(3).replace(".",",")+" s"+(x.early?" + 1,000 s Strafe":"");return "<div class='status zg-rank'><b>"+(i+1)+".</b><b>"+zgEsc(x.name)+"</b><span>"+val+"</span></div>";}).join("")+"</div>";}
 function zgStartRound(){if(zgRound===0){zgHlStart();return;}zgAnswers={};zgWinner=null;zgLive={};zgPhase="playing";const rem=zgRemaining(),end=(zgRound===1||zgRound===3)?Date.now()+60000:0;rem.forEach(n=>zgSend(n,{type:"zgState",round:zgRound,phase:"playing",title:ZG_ROUNDS[zgRound].title,question:ZG_ROUNDS[zgRound].question,end}));zgSend("Fabian",{type:"zgState",round:zgRound,phase:"excluded",title:"🏨 Bettgeflüster"});renderHost();if(end)setTimeout(()=>{if(modeName==="zimmer"&&zgPhase==="playing")zgRevealRound();},60500);}
 function zgRevealRound(){if(zgRound===0||zgPhase!=="playing")return;const rank=zgRanking();if(!rank.length){alert("Noch keine Ergebnisse vorhanden.");return;}zgPhase="revealed";zgWinner=rank[0].name;zgRemaining().forEach(n=>zgSend(n,{type:"zgState",round:zgRound,phase:"revealed",winner:zgWinner,ranking:rank}));renderHost();}
-function zgConfirmPair(){if(zgPhase!=="revealed"||!zgWinner)return;const sel=$("zgPartner");if(!sel||!sel.value)return;const partner=sel.value;if(partner===zgWinner||zgOut.has(partner)){alert("Ungültiger Partner.");return;}zgDuos.push([zgWinner,partner]);zgOut.add(zgWinner);zgOut.add(partner);zgPhase="paired";zgSend(zgWinner,{type:"zgState",round:zgRound,phase:"paired",partner});zgSend(partner,{type:"zgState",round:zgRound,phase:"paired",partner:zgWinner});renderHost();}
-function zgNextRound(){if(zgPhase!=="paired"||zgDuos.length>=5)return;zgRound=Math.min(4,zgRound+1);zgPhase="idle";zgAnswers={};zgLive={};zgWinner=null;zgHl=null;zgRemaining().forEach(n=>zgSend(n,{type:"zgState",round:zgRound,phase:"ready",title:ZG_ROUNDS[zgRound].title,question:ZG_ROUNDS[zgRound].question}));renderHost();}
-function zgResetGame(){if(!confirm("Bettgeflüster wirklich komplett zurücksetzen?"))return;clearInterval(zgHlTimer);zgRound=0;zgPhase="idle";zgAnswers={};zgDuos=[];zgOut=new Set();zgWinner=null;zgHl=null;ZG_PLAYERS.forEach(n=>zgSend(n,{type:"zgState",round:0,phase:"ready",title:ZG_ROUNDS[0].title,question:ZG_ROUNDS[0].question}));renderHost();}
+function zgFinishIfPossible(){
+  const rem=zgRemaining();
+
+  // Variante 3: Klemm raus -> 8 Spieler -> exakt 4 Paare, keine Couch, kein zusätzliches Einzelzimmer.
+  if(!KLEMM_DABEI || zgVariant==="noKlemm"){
+    if(rem.length===0 && zgDuos.length===4){zgPhase="finished";return true;}
+    return false;
+  }
+
+  // Variante 1: Klemm dabei + Couch gut -> 4 Paare + letzter Spieler Couch.
+  if(zgVariant==="couch" && rem.length===1 && zgDuos.length===4){
+    zgCouch=rem[0];zgOut.add(zgCouch);zgSend(zgCouch,{type:"zgState",round:zgRound,phase:"couch"});zgPhase="finished";return true;
+  }
+
+  // Variante 2: Klemm dabei + Couch schlecht -> 4 Paare + 1 Einzelzimmer.
+  if(zgVariant==="single"){
+    if(zgSingles.length===0 && rem.length===1 && zgDuos.length===4){
+      zgSingles=[rem[0]];zgOut.add(rem[0]);zgSend(rem[0],{type:"zgState",round:zgRound,phase:"single"});zgPhase="finished";return true;
+    }
+    if(zgSingles.length===1 && rem.length===0 && zgDuos.length===4){zgPhase="finished";return true;}
+  }
+  return false;
+}
+function zgConfirmPair(){
+  if(zgPhase!=="revealed"||!zgWinner)return;
+  const sel=$("zgPartner");if(!sel||!sel.value)return;const partner=sel.value;
+  if(partner==="__SINGLE__"){
+    if(!KLEMM_DABEI||zgVariant!=="single"||zgSingles.length){alert("Einzelzimmer ist nicht verfügbar.");return;}
+    zgSingles=[zgWinner];zgOut.add(zgWinner);zgSend(zgWinner,{type:"zgState",round:zgRound,phase:"single"});zgPhase="paired";
+  }else{
+    if(partner===zgWinner||zgOut.has(partner)){alert("Ungültiger Partner.");return;}
+    zgDuos.push([zgWinner,partner]);zgOut.add(zgWinner);zgOut.add(partner);zgPhase="paired";
+    zgSend(zgWinner,{type:"zgState",round:zgRound,phase:"paired",partner});zgSend(partner,{type:"zgState",round:zgRound,phase:"paired",partner:zgWinner});
+  }
+  zgFinishIfPossible();renderHost();
+}
+function zgNextRound(){
+  if(zgPhase!=="paired")return;
+  if(zgFinishIfPossible()){renderHost();return;}
+  if(zgRound>=4){alert("Keine weitere Spielrunde vorhanden.");return;}
+  zgRound++;zgPhase="idle";zgAnswers={};zgLive={};zgWinner=null;zgHl=null;
+  zgRemaining().forEach(n=>zgSend(n,{type:"zgState",round:zgRound,phase:"ready",title:ZG_ROUNDS[zgRound].title,question:ZG_ROUNDS[zgRound].question}));renderHost();
+}
+function zgResetGame(){
+  if(!confirm("Bettgeflüster wirklich komplett zurücksetzen?"))return;
+  clearInterval(zgHlTimer);zgRound=0;zgPhase=KLEMM_DABEI?"chooseVariant":"idle";zgAnswers={};zgDuos=[];zgOut=new Set();zgWinner=null;zgHl=null;zgVariant=KLEMM_DABEI?null:"noKlemm";zgSingles=[];zgCouch=null;
+  ZG_PLAYERS.forEach(n=>zgSend(n,{type:"zgState",round:0,phase:"ready",title:ZG_ROUNDS[0].title,question:ZG_ROUNDS[0].question}));renderHost();
+}
 function zgClientBase(){$("playerView").classList.remove("tour-active");$("playerTourBox").classList.add("hide");$("buzzBtn").classList.add("hide");$("playerBuzzBoard").classList.remove("hide");$("playerRanking").innerHTML="";$("playerCountdown").textContent="";}
-function zgClientRender(m){zgClientBase();clearInterval(timerInt);const name=role.slice(7);$("buzzState").textContent="";if(m.phase==="excluded"){$("playerAlert").className="status";$("playerAlert").innerHTML="<b>Du spielst beim Bettgeflüster nicht mit.</b>";return;}if(m.phase==="ready"){$("playerAlert").className="status";$("playerAlert").innerHTML="<b>"+zgEsc(m.title)+"</b><br>Warte auf den Spielleiter …";return;}if(m.phase==="paired"){$("playerAlert").className="status ok";$("playerAlert").innerHTML="🛏️ <b>Zimmerteam steht!</b><br>Du + <b>"+zgEsc(m.partner)+"</b>";return;}if(m.phase==="revealed"){const rank=m.ranking||[],pos=rank.findIndex(x=>x.name===name);$("playerAlert").className=name===m.winner?"status ok":"status";$("playerAlert").innerHTML=name===m.winner?"🏆 <b>DU HAST GEWONNEN!</b><br>Du darfst deinen Zimmerpartner wählen.":"<b>Runde beendet.</b>"+(pos>=0?"<br>Platz "+(pos+1):"");$("playerRanking").innerHTML=rank.map((x,i)=>"<div class='status'><b>"+(i+1)+". "+zgEsc(x.name)+"</b></div>").join("");return;}
+function zgClientRender(m){zgClientBase();clearInterval(timerInt);const name=role.slice(7);$("buzzState").textContent="";if(m.phase==="excluded"){$("playerAlert").className="status";$("playerAlert").innerHTML="<b>Du spielst beim Bettgeflüster nicht mit.</b>";return;}if(m.phase==="ready"){$("playerAlert").className="status";$("playerAlert").innerHTML="<b>"+zgEsc(m.title)+"</b><br>Warte auf den Spielleiter …";return;}if(m.phase==="paired"){$("playerAlert").className="status ok";$("playerAlert").innerHTML="🛏️ <b>Zimmerteam steht!</b><br>Du + <b>"+zgEsc(m.partner)+"</b>";return;}if(m.phase==="single"){$("playerAlert").className="status ok";$("playerAlert").innerHTML="🛏️ <b>Einzelzimmer!</b><br>Du schläfst alleine im Zimmer.";return;}if(m.phase==="couch"){$("playerAlert").className="status ok";$("playerAlert").innerHTML="🛋️ <b>Couch</b><br>Du bist als letzter Spieler übrig geblieben.";return;}if(m.phase==="revealed"){const rank=m.ranking||[],pos=rank.findIndex(x=>x.name===name);$("playerAlert").className=name===m.winner?"status ok":"status";$("playerAlert").innerHTML=name===m.winner?"🏆 <b>DU HAST GEWONNEN!</b><br>Du darfst deinen Zimmerpartner wählen.":"<b>Runde beendet.</b>"+(pos>=0?"<br>Platz "+(pos+1):"");$("playerRanking").innerHTML=rank.map((x,i)=>"<div class='status'><b>"+(i+1)+". "+zgEsc(x.name)+"</b></div>").join("");return;}
   if(m.round===0&&(m.phase==="hlQuestion"||m.phase==="hlResult")){$("playerAlert").className="status";if(m.phase==="hlQuestion"){$("playerAlert").innerHTML="<div class='zg-phone-title'>🌙 HIGHER OR LOWER</div>"+zgEsc(m.question)+(m.period?"<div class='muted'>(Zeitraum: "+zgEsc(m.period)+")</div>":"")+"<div class='muted'>Höher oder niedriger als</div><div class='big'>"+zgEsc(m.threshold)+"</div><div class='zg-hearts'>"+"❤️".repeat(m.lives[name]||0)+"</div>";$("playerRanking").innerHTML="<div class='grid'><button id='zgHlHi' class='good' style='font-size:24px'>⬆ HÖHER</button><button id='zgHlLo' class='danger' style='font-size:24px'>⬇ NIEDRIGER</button></div>";if(m.end)countdown(m.end,$("playerCountdown"));const send=c=>{conn.send({type:"zgHlChoice",name,choice:c});document.querySelectorAll('#zgHlHi,#zgHlLo').forEach(x=>x.disabled=true);clearInterval(timerInt);$("playerCountdown").textContent="";};$("zgHlHi").onclick=()=>send("higher");$("zgHlLo").onclick=()=>send("lower");}else{$("playerAlert").innerHTML="<div class='big'>Antwort "+zgEsc(m.actual||"")+"</div><div class='zg-hearts'>"+"❤️".repeat(m.lives[name]||0)+"</div>"+(m.sudden?"<div class='status bad'><b>⚡ SUDDEN DEATH</b></div>":"");$("playerRanking").innerHTML=(m.result||[]).map(x=>"<div class='status'>"+zgEsc(x)+"</div>").join("");}return;}
   if(m.phase!=="playing")return;
   if(m.round===1||m.round===3){$("playerAlert").className="status";$("playerAlert").innerHTML="<div class='zg-phone-title'>"+zgEsc(m.title)+"</div>"+zgEsc(m.question);$("playerRanking").innerHTML="<input id='zgPhoneInput' type='number' inputmode='numeric' placeholder='"+(m.round===1?"Kilometer":"Meter")+"' style='width:100%;font-size:24px'><button id='zgPhoneSend' class='good' style='width:100%;margin-top:10px;font-size:20px'>ABSCHICKEN</button>";if(m.end)countdown(m.end,$("playerCountdown"),()=>{const b=$("zgPhoneSend");if(b)b.disabled=true;});const ze=$("zgPhoneInput");ze.addEventListener("input",()=>conn.send({type:"zgLive",name,data:{kind:"input",value:ze.value,sent:false}}));$("zgPhoneSend").onclick=()=>{const e=$("zgPhoneInput");if(!e.value)return;conn.send({type:"zgLive",name,data:{kind:"input",value:e.value,sent:true}});conn.send({type:"zgAnswer",name,value:Number(e.value)});e.disabled=true;$("zgPhoneSend").disabled=true;clearInterval(timerInt);$("playerCountdown").textContent="";};return;}
@@ -2289,5 +2510,11 @@ function qkBindHost(){
  document.querySelectorAll(".qkSettle").forEach(b=>b.onclick=()=>qkSettle(b.dataset.m,b.dataset.o));document.querySelectorAll(".qkUndo").forEach(b=>b.onclick=()=>qkUndo(b.dataset.m));
 }
 /* =================== /QUOTEN-KOMA ===================== */
+</script>
+<script>
+if(!KLEMM_DABEI){
+  const ps=document.getElementById("playerSelect");
+  if(ps) [...ps.options].filter(o=>o.value==="Klemm"||o.textContent.trim()==="Klemm").forEach(o=>o.remove());
+}
 </script>
 </body></html>
