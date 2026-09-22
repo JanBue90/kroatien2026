@@ -277,6 +277,15 @@ window.addEventListener("error",function(e){
 <section id="setup" class="card">
 <h2>Verbinden</h2>
 <p class="muted">Alle Geräte öffnen dieselbe Seite. Jan erstellt den Raum, die Kapitäne treten mit dem Raumcode bei.</p>
+<div class="status" style="border:3px solid #118ab2;background:#eefaff;margin-bottom:12px">
+<b style="font-size:20px">🔒 Klemm & Team-Auslosung</b><br>
+Der Klemm-Status ist passwortgeschützt. Der Absprung startet danach im Spielleiterbereich.
+<div class="grid" style="margin-top:10px">
+<button id="setupKlemmYes" class="good">✓ KLEMM DABEI</button>
+<button id="setupKlemmNo" class="danger">✕ KLEMM FÄLLT AUS</button>
+</div>
+<div id="setupKlemmState" style="font-weight:900;margin-top:8px"></div>
+</div>
 <div class="grid">
 <button id="hostBtn">JAN – SPIELLEITER</button>
 <button id="captainBtn" class="secondary">KAPITÄN</button>
@@ -367,9 +376,15 @@ function setKlemmDabei(v){
   localStorage.setItem("kroatien_klemm_dabei", v ? "1" : "0");
   location.reload();
 }
+function setKlemmDabeiProtected(v){
+  const pw=prompt("Passwort für Klemm-Status:");
+  if(pw===null)return;
+  if(pw!=="Janyo"){alert("Falsches Passwort.");return;}
+  setKlemmDabei(v);
+}
 function activeCount(n){ return KLEMM_DABEI ? n : n-1; }
 
-let peer=null, conns={}, conn=null, role=null, room=null, modeName="quiz";
+let peer=null, conns={}, conn=null, role=null, room=null, modeName="setup";
 // v29 Higher or Lower – eigenständiges Einzelspiel innerhalb der Haupt-App
 const HL_NAMES=["Kevin","Markus","Stefan","Michel","Patrick","Mario","Fabian","Andre","Klemm","Swen","Jan"].filter(n=>KLEMM_DABEI||n!=="Klemm");
 
@@ -1191,15 +1206,12 @@ function openJoin(kind){
   $("roomIn").focus();
 }
 function host(){
-  if(!ensurePeer())return;
   role="host"; room=roomCode();
+  show("hostView"); $("roomCode").textContent=room; refreshConnections(); renderHost();
+  if(!ensurePeer())return;
   peer=new Peer("kroatien-"+room);
-  peer.on("open",()=>{
-    show("hostView"); $("roomCode").textContent=room; refreshConnections(); renderHost();
-  });
-  peer.on("connection",c=>{
-    c.on("data",m=>onHostMessage(m,c));
-  });
+  peer.on("open",()=>{ refreshConnections(); renderHost(); });
+  peer.on("connection",c=>{ c.on("data",m=>onHostMessage(m,c)); });
   peer.on("error",e=>alert("Verbindungsfehler: "+e.type));
 }
 function join(teamRole){
@@ -1786,7 +1798,7 @@ function renderHost(){
       "<p class='muted'>Dieser Schalter passt Klemm zentral für Spielerlisten, Einzelspiele, Transfer-Tinder, Buzzer, Bettgeflüster und Teamanzeige an. Die Einstellung bleibt nach einem Browser-Neustart gespeichert.</p>"+
       "<div class='grid'><button id='klemmYes' class='good'>✓ KLEMM DABEI</button><button id='klemmNo' class='danger'>✕ KLEMM FÄLLT AUS</button></div>"+
       "<div class='status' style='margin-top:12px'><b>Aktuelle Teamgrößen:</b> "+(KLEMM_DABEI?"4 / 3 / 3":"3 / 3 / 3")+"</div></div>";
-    const y=$("klemmYes"),n=$("klemmNo"); if(y)y.onclick=()=>setKlemmDabei(true); if(n)n.onclick=()=>setKlemmDabei(false);
+    const y=$("klemmYes"),n=$("klemmNo"); if(y)y.onclick=()=>setKlemmDabeiProtected(true); if(n)n.onclick=()=>setKlemmDabeiProtected(false);
     return;
   }
   if(modeName==="quotenkoma"){ $("hostGame").innerHTML=qkHostHtml(); qkBindHost(); qkBroadcast(); return; }
@@ -2371,6 +2383,16 @@ function acceptCategory(t){
 
 
 
+
+
+function refreshSetupKlemmState(){
+  const e=$("setupKlemmState");
+  if(e)e.textContent=KLEMM_DABEI?"Aktuell: KLEMM DABEI → Teams 4 / 3 / 3":"Aktuell: KLEMM FÄLLT AUS → Teams 3 / 3 / 3";
+}
+const sky=$("setupKlemmYes"),skn=$("setupKlemmNo");
+if(sky)sky.addEventListener("click",()=>setKlemmDabeiProtected(true));
+if(skn)skn.addEventListener("click",()=>setKlemmDabeiProtected(false));
+refreshSetupKlemmState();
 
 $("hostBtn").addEventListener("click",()=>{
   const pw=prompt("Spielleiter-Passwort:");
