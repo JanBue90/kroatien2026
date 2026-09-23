@@ -272,7 +272,7 @@ window.addEventListener("error",function(e){
 </script>
 </head>
 <body>
-<header>🇭🇷 Kroatien-Olympiade LIVE <span style="font-size:12px;opacity:.78">ADRIA BEACH EDITION · COMPACT · Saufy-Nauten 2026</span> <span style="display:inline-block;margin-left:8px;padding:2px 7px;border-radius:6px;background:#fff;color:#087f9c;font-weight:900;font-size:12px;vertical-align:middle">V3 FIREBASE</span></header>
+<header>🇭🇷 Kroatien-Olympiade LIVE <span style="font-size:12px;opacity:.78">ADRIA BEACH EDITION · COMPACT · Saufy-Nauten 2026</span> <span style="display:inline-block;margin-left:8px;padding:2px 7px;border-radius:6px;background:#fff;color:#087f9c;font-weight:900;font-size:12px;vertical-align:middle">V4 FIREBASE · EX-WM</span></header>
 <div class="wrap">
 <section id="setup" class="card">
 <h2>Verbinden</h2>
@@ -301,7 +301,7 @@ window.addEventListener("error",function(e){
 <div class="tabs">
 <button data-mode="doors" style="background:#118ab2;color:#fff">🚪 DREI TÜREN</button><button data-mode="quiz">Adria-Abitur</button>
 <button data-mode="estimate">Dicht daneben</button>
-<button data-mode="category">Listen-Lotto</button><button data-mode="higherlower">Higher or Lower</button><button data-mode="higherlowerteam">Higher or Lower · TEAM</button><button data-mode="higherlowerbed">Higher or Lower - Bedtime Story</button><button data-mode="emoji">Emoji-Eskalation</button><button data-mode="transfertinder">⚽ Transfer-Tinder</button><button data-mode="quotenkoma" style="background:#3b0066;color:#fff;border-color:#7b2cbf">🎰 QUOTEN-KOMA</button><button data-mode="buzzer">Buzzer</button><button data-mode="tourpics">Blackout-Bilder</button><button data-mode="zimmer" class="good" style="font-size:17px;border:3px solid #0d6639">🏨 BETTGEFLÜSTER – ZIMMER AUSLOSEN</button>
+<button data-mode="category">Listen-Lotto</button><button data-mode="higherlower">Higher or Lower</button><button data-mode="higherlowerteam">Higher or Lower · TEAM</button><button data-mode="higherlowerbed">Higher or Lower - Bedtime Story</button><button data-mode="emoji">Emoji-Eskalation</button><button data-mode="transfertinder">⚽ Transfer-Tinder</button><button data-mode="quotenkoma" style="background:#3b0066;color:#fff;border-color:#7b2cbf">🎰 QUOTEN-KOMA</button><button data-mode="buzzer">Buzzer</button><button data-mode="tourpics">Blackout-Bilder</button><button data-mode="exwm" style="background:#8b1e1e;color:#fff;border-color:#5e1111">🏆 EX-WM</button><button data-mode="zimmer" class="good" style="font-size:17px;border:3px solid #0d6639">🏨 BETTGEFLÜSTER – ZIMMER AUSLOSEN</button>
 </div>
 <div id="hostGame"></div>
 </section>
@@ -1842,6 +1842,7 @@ function hostRulesHtml(mode){
     quiz:{name:"Adria-Abitur",who:"Kapitäne",buzz:"Nein",text:rosterRuleText()+" 20 Kroatien-Fragen. Alle drei Teams antworten gleichzeitig über ihre Kapitäne. Pro Frage laufen 30 Sekunden. Richtige Antwort = 1 Punkt. Sobald alle Teams geantwortet haben, wird automatisch aufgelöst."},
     estimate:{name:"Dicht daneben",who:"Kapitäne",buzz:"Nein",text:rosterRuleText()+" Alle drei Kapitäne geben gleichzeitig eine Schätzung in Kilometern ab. Pro Frage laufen 60 Sekunden. Bei der Auflösung sehen Spielleiter, Kapitäne und TV/Zuschauer die richtige Zahl, jede Schätzung und die jeweilige Differenz. Nächstes Team = 2 Punkte, zweites = 1 Punkt, drittes = 0."},
     category:{name:"Listen-Lotto",who:"Kapitäne",buzz:"Nein",text:rosterRuleText()+" Die Teams spielen nacheinander. Das aktive Team hat 35 Sekunden für einen gültigen Begriff. Richtige Antwort = nächstes noch aktives Team wird automatisch ausgewählt. Falsche Antwort = Team ist für die Kategorie raus und nicht mehr auswählbar. Im Dropdown wird das zuletzt antwortende Team markiert. Letztes Team gewinnt die Kategorie."},
+    exwm:{name:"Ex-WM",who:"8 Einzelspieler",buzz:"Nein",text:"K.-o.-Turnier mit 8 Teilnehmern: Jan, Fabian, Kevin, Markus, Stefan, Patrick, Mario und Swen. Andre und Michel spielen bei der Ex-WM nicht mit. Zufällige Auslosung in vier Viertelfinals; die Sieger rücken automatisch ins Halbfinale und anschließend ins Finale vor."},
     higherlower:{name:"Higher or Lower",who:"Einzelspieler",buzz:"Nein",text:"Alle ausgewählten Einzelspieler beantworten dieselbe Frage gleichzeitig mit HÖHER oder NIEDRIGER. 30 Sekunden pro Frage. Falsch oder keine Antwort = 1 Leben weg. Mit 0 Leben scheidet der Spieler aus; letzter Spieler mit Leben gewinnt."},
     higherlowerteam:{name:"Higher or Lower · TEAM",who:"Kapitäne",buzz:"Nein",text:rosterRuleText()+" Alle drei Teams spielen gleichzeitig; nur die Kapitäne tippen HÖHER oder NIEDRIGER. Die übrigen Spieler beraten über TV/Zuschauer mit. 1–5 Teamleben einstellbar. 30 Sekunden pro Frage; sobald alle noch aktiven Teams geantwortet haben, wird automatisch aufgelöst. Falsch oder keine Antwort = 1 Teamleben weg."},
     higherlowerbed:{name:"Higher or Lower – Bedtime Story",who:"Einzelspieler",buzz:"Nein",text:"Wie Higher or Lower: alle ausgewählten Einzelspieler antworten gleichzeitig. 30 Sekunden pro Frage; falsch oder keine Antwort = 1 Leben weg. Die ersten 12 Fragen sind feste Kegelclub-Fragen, danach folgen zufällige Fragen."},
@@ -1935,7 +1936,63 @@ function doorHostHtml(){
     "<button id='doorReset' class='danger' style='width:100%;margin-top:16px'>KOMPLETT ZURÜCKSETZEN</button></div>";
 }
 
+
+/* ===================== EX-WM ===================== */
+const EXWM_PLAYERS=["Jan","Fabian","Kevin","Markus","Stefan","Patrick","Mario","Swen"];
+const EXWM_KEY="kroatien_exwm_v1";
+function exwmEmpty(){return {drawn:false,qf:[null,null,null,null],sf:[null,null],final:null,champion:null};}
+function exwmLoad(){try{return Object.assign(exwmEmpty(),JSON.parse(localStorage.getItem(EXWM_KEY)||"null")||{});}catch(e){return exwmEmpty();}}
+let exwm=exwmLoad();
+function exwmSave(){localStorage.setItem(EXWM_KEY,JSON.stringify(exwm));}
+function exwmShuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function exwmDraw(){
+  if(exwm.drawn&&!confirm("Die bestehende Ex-WM wirklich neu auslosen?"))return;
+  const a=exwmShuffle(EXWM_PLAYERS);
+  exwm={drawn:true,qf:[[a[0],a[1],null],[a[2],a[3],null],[a[4],a[5],null],[a[6],a[7],null]],sf:[[null,null,null],[null,null,null]],final:[null,null,null],champion:null};
+  exwmSave();renderHost();
+}
+function exwmPick(round,idx,name){
+  if(round==="qf"){
+    exwm.qf[idx][2]=name;
+    const sf=Math.floor(idx/2),slot=idx%2;
+    exwm.sf[sf][slot]=name; exwm.sf[sf][2]=null;
+    exwm.final=[null,null,null]; exwm.champion=null;
+  }else if(round==="sf"){
+    exwm.sf[idx][2]=name; exwm.final[idx]=name; exwm.final[2]=null; exwm.champion=null;
+  }else if(round==="final"){
+    exwm.final[2]=name;exwm.champion=name;
+  }
+  exwmSave();renderHost();
+}
+function exwmReset(){if(confirm("Ex-WM komplett zurücksetzen?")){exwm=exwmEmpty();exwmSave();renderHost();}}
+function exwmMatch(title,round,idx,m){
+  if(!m||!m[0]||!m[1])return "<div class='status'><b>"+title+"</b><br><span class='muted'>Wartet auf vorherige Runde …</span></div>";
+  const winner=m[2];
+  return "<div class='status' style='padding:12px'><b>"+title+"</b><div class='grid' style='margin-top:8px'>"+
+    [m[0],m[1]].map(n=>"<button class='"+(winner===n?"good":"secondary")+" exwmWin' data-round='"+round+"' data-idx='"+idx+"' data-name='"+n+"'>"+n+(winner===n?" ✓":"")+"</button>").join("")+
+    "</div></div>";
+}
+function exwmHostHtml(){
+  if(!exwm.drawn)return "<div class='card'><h2>🏆 EX-WM</h2><p><b>8 Spieler:</b> Jan · Fabian · Kevin · Markus · Stefan · Patrick · Mario · Swen</p><p class='muted'>Andre und Michel sind nur bei der Ex-WM raus. Alle anderen Bereiche der App bleiben unverändert.</p><button id='exwmDraw' class='good' style='width:100%;font-size:22px'>🎲 TURNIER AUSLOSEN</button></div>";
+  return "<div class='card'><h2>🏆 EX-WM · TURNIERBAUM</h2>"+
+    (exwm.champion?"<div class='status ok' style='font-size:30px;text-align:center;padding:18px'>🏆 <b>"+exwm.champion+"</b><br><span style='font-size:18px'>EX-WELTMEISTER</span></div>":"")+
+    "<h3>Viertelfinale</h3>"+exwm.qf.map((m,i)=>exwmMatch("VF "+(i+1),"qf",i,m)).join("")+
+    "<h3>Halbfinale</h3>"+exwm.sf.map((m,i)=>exwmMatch("HF "+(i+1),"sf",i,m)).join("")+
+    "<h3>Finale</h3>"+exwmMatch("FINALE","final",0,exwm.final)+
+    "<div class='grid' style='margin-top:16px'><button id='exwmRedraw' class='secondary'>🎲 NEU AUSLOSEN</button><button id='exwmReset' class='danger'>RESET</button></div></div>";
+}
+function exwmBind(){
+  const d=$("exwmDraw"),rd=$("exwmRedraw"),rs=$("exwmReset");
+  if(d)d.onclick=exwmDraw;if(rd)rd.onclick=exwmDraw;if(rs)rs.onclick=exwmReset;
+  document.querySelectorAll(".exwmWin").forEach(b=>b.onclick=()=>exwmPick(b.dataset.round,Number(b.dataset.idx),b.dataset.name));
+}
+
 function renderHost(){
+  if(modeName==="exwm"){
+    $("hostGame").innerHTML=hostRulesHtml("exwm")+exwmHostHtml();
+    exwmBind();
+    return;
+  }
   if(modeName==="doors"){
     $("hostGame").innerHTML=doorHostHtml();
     const a=$("doorStart"),d=$("doorReset");
