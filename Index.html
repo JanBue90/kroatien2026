@@ -277,7 +277,7 @@ window.addEventListener("error",function(e){
 <section id="setup" class="card">
 <h2>Verbinden</h2>
 <p class="muted">Alle Geräte öffnen dieselbe Seite. Jan erstellt den Raum, die Kapitäne treten mit dem Raumcode bei.</p>
-<div class="status" style="border:3px solid #118ab2;background:#eefaff;margin-bottom:12px">
+<div class="status hide" style="border:3px solid #118ab2;background:#eefaff;margin-bottom:12px">
 <b style="font-size:20px">🔒 Klemm & Team-Auslosung</b><br>
 Der Klemm-Status ist passwortgeschützt. Die Team-Auslosung „Drei Türen“ startet danach im Spielleiterbereich.
 <div class="grid" style="margin-top:10px">
@@ -308,7 +308,7 @@ Der Klemm-Status ist passwortgeschützt. Die Team-Auslosung „Drei Türen“ st
 <section id="hostView" class="hide">
 <div class="card"><div class="muted">Raumcode</div><div id="roomCode" class="big code"></div><div id="hostPeerStatus" class="status">⏳ Raum wird registriert …</div><div id="connections"></div></div>
 <div class="tabs">
-<button data-mode="setup" style="background:#17324d;color:#fff">⚙️ REISE-SETUP</button><button data-mode="doors" style="background:#118ab2;color:#fff">🚪 DREI TÜREN</button><button data-mode="quiz">Adria-Abitur</button>
+<button data-mode="doors" style="background:#118ab2;color:#fff">🚪 DREI TÜREN</button><button data-mode="quiz">Adria-Abitur</button>
 <button data-mode="estimate">Dicht daneben</button>
 <button data-mode="category">Listen-Lotto</button><button data-mode="higherlower">Higher or Lower</button><button data-mode="higherlowerteam">Higher or Lower · TEAM</button><button data-mode="higherlowerbed">Higher or Lower - Bedtime Story</button><button data-mode="emoji">Emoji-Eskalation</button><button data-mode="transfertinder">⚽ Transfer-Tinder</button><button data-mode="quotenkoma" style="background:#3b0066;color:#fff;border-color:#7b2cbf">🎰 QUOTEN-KOMA</button><button data-mode="buzzer">Buzzer</button><button data-mode="tourpics">Blackout-Bilder</button><button data-mode="zimmer" class="good" style="font-size:17px;border:3px solid #0d6639">🏨 BETTGEFLÜSTER – ZIMMER AUSLOSEN</button>
 </div>
@@ -332,7 +332,7 @@ window.GAME_DATA.emoji=[["👁️ 🐅 🥊 🏆", "Eye of the Tiger", "Survivor
 </script>
 <script>
 "use strict";
-const KLEMM_DABEI = localStorage.getItem("kroatien_klemm_dabei") !== "0";
+const KLEMM_DABEI = false;
 const D=window.GAME_DATA;
 let TEAMS_REVEALED = localStorage.getItem("kroatien_teams_revealed")==="1";
 function teamRosterHtml(team){
@@ -403,7 +403,7 @@ function rosterRuleText(){
     : "Klemm fällt aus: 9 Teamspieler, alle drei Teams haben je 3 Spieler.";
 }
 
-let peer=null, conns={}, conn=null, role=null, room=null, modeName="setup";
+let peer=null, conns={}, conn=null, role=null, room=null, modeName="quiz";
 // v29 Higher or Lower – eigenständiges Einzelspiel innerhalb der Haupt-App
 const HL_NAMES=["Kevin","Markus","Stefan","Michel","Patrick","Mario","Fabian","Andre","Klemm","Swen","Jan"].filter(n=>KLEMM_DABEI||n!=="Klemm");
 
@@ -1216,17 +1216,6 @@ function ensurePeer(){
   if(typeof Peer==="undefined"){alert("PeerJS konnte nicht geladen werden. Bitte Internetverbindung prüfen.");return false;}
   return true;
 }
-const PEER_OPTS={
-  debug:1,
-  pingInterval:3000,
-  config:{
-    iceServers:[
-      {urls:"stun:stun.l.google.com:19302"},
-      {urls:"stun:stun1.l.google.com:19302"}
-    ],
-    iceCandidatePoolSize:10
-  }
-};
 function openJoin(kind){
   role=kind;
   $("joinBox").classList.remove("hide");
@@ -1249,7 +1238,7 @@ function host(){
     conns={};
     room=roomCode();
     const wantedId="kroatien-"+room;
-    peer=new Peer(wantedId,PEER_OPTS);
+    peer=new Peer(wantedId,{debug:0});
     let opened=false;
     const timer=setTimeout(()=>{
       if(!opened){
@@ -1267,18 +1256,11 @@ function host(){
       refreshConnections();renderHost();
     });
     peer.on("connection",c=>{
-      const bind=()=>{
-        if(c.metadata && c.metadata.role && String(c.metadata.role).startsWith("player:")){
-          c._pendingRole=c.metadata.role;
-        }
-        c.on("data",m=>onHostMessage(m,c));
-        c.on("close",()=>{
-          const r=c._kroatienRole;
-          if(r && conns[r]===c){delete conns[r];refreshConnections();}
-        });
-        c.on("error",()=>{});
-      };
-      if(c.open)bind(); else c.on("open",bind);
+      c.on("data",m=>onHostMessage(m,c));
+      c.on("close",()=>{
+        const r=c._kroatienRole;
+        if(r && conns[r]===c){delete conns[r];refreshConnections();}
+      });
     });
     peer.on("disconnected",()=>{
       $("hostPeerStatus").className="status bad";
@@ -1310,9 +1292,9 @@ function join(teamRole){
   const attempt=()=>{
     if(done)return; tries++;
     try{if(conn)conn.close()}catch(e){} try{if(peer)peer.destroy()}catch(e){}
-    peer=new Peer(undefined,PEER_OPTS);
+    peer=new Peer(undefined,{debug:0});
     peer.on("open",()=>{
-      conn=peer.connect("kroatien-"+target,{});
+      conn=peer.connect("kroatien-"+target,{reliable:true});
       conn.on("open",()=>{
         done=true;
         conn.send({type:"join",role});
@@ -1338,70 +1320,79 @@ function joinPlayer(){
   if(!room){alert("Bitte Raumcode eingeben.");return;}
   const name=$("playerSelect").value;
   if(!name){alert("Bitte Spieler auswählen.");return;}
-  if(!ensurePeer())return;
+  if(!window.Peer){playerJoinStatus("❌ PeerJS konnte nicht geladen werden. Seite neu laden / Internet prüfen.",true);return;}
 
   role="player:"+name;
-  const targetRoom=room, btn=$("playerJoinBtn");
-  btn.disabled=true;
-  let generation=0, attempts=0, acked=false, overall=null;
+  const btn=$("playerJoinBtn"); btn.disabled=true;
+  const targetRoom=room;
+  let attempt=0, stopped=false, acked=false, retryTimer=null, overallTimer=null;
 
-  const kill=()=>{
-    try{if(conn){conn.close();conn=null}}catch(e){}
-    try{if(peer){peer.destroy();peer=null}}catch(e){}
+  try{if(conn){conn.close();conn=null}}catch(e){}
+  try{if(peer){peer.destroy();peer=null}}catch(e){}
+
+  const cleanup=()=>{
+    clearTimeout(retryTimer);clearTimeout(overallTimer);
+    try{if(conn)conn.close()}catch(e){}
+    try{if(peer)peer.destroy()}catch(e){}
+    conn=null;peer=null;
   };
-  const finishFail=(msg)=>{
-    if(acked)return;
-    generation++; clearTimeout(overall); kill(); btn.disabled=false;
+  const finalFail=(msg)=>{
+    if(stopped||acked)return; stopped=true; cleanup(); btn.disabled=false;
     playerJoinStatus("❌ "+msg+"<br><button id='playerRetryBtn' class='secondary' style='margin-top:8px'>ERNEUT VERBINDEN</button>",true);
     setTimeout(()=>{const r=$("playerRetryBtn");if(r)r.onclick=joinPlayer},0);
   };
-  const attempt=()=>{
-    if(acked)return;
-    const myGen=++generation; attempts++; kill();
-    playerJoinStatus("⏳ "+name+" · Versuch "+attempts+"<br>1/3 Verbindungsserver …");
-    peer=new Peer(undefined,PEER_OPTS);
-    let stageTimer=setTimeout(()=>{if(myGen===generation&&!acked){generation++;kill();setTimeout(attempt,500)}},7000);
+  const retry=(why)=>{
+    if(stopped||acked)return;
+    try{if(conn)conn.close()}catch(e){} try{if(peer)peer.destroy()}catch(e){}
+    conn=null;peer=null;
+    playerJoinStatus("⏳ "+name+": "+why+"<br>Neuer Versuch "+(attempt+1)+" …");
+    retryTimer=setTimeout(connectAttempt,900);
+  };
+  const connectAttempt=()=>{
+    if(stopped||acked)return;
+    attempt++;
+    playerJoinStatus("⏳ "+name+" verbindet sich mit Raum <b>"+targetRoom+"</b> …<br>Versuch "+attempt);
+    peer=new Peer(undefined,{debug:0});
+    let peerOpened=false;
+    const localTimer=setTimeout(()=>{if(!acked)retry("Verbindung dauert länger")},5000);
 
     peer.on("open",()=>{
-      if(myGen!==generation||acked)return;
-      clearTimeout(stageTimer);
-      playerJoinStatus("⏳ "+name+" · Versuch "+attempts+"<br>2/3 Raum "+targetRoom+" gefunden – direkte Verbindung …");
-      conn=peer.connect("kroatien-"+targetRoom,{serialization:"json",metadata:{role,name}});
-      stageTimer=setTimeout(()=>{if(myGen===generation&&!acked){generation++;kill();setTimeout(attempt,500)}},9000);
-
+      peerOpened=true;
+      if(stopped||acked)return;
+      conn=peer.connect("kroatien-"+targetRoom,{reliable:true,serialization:"json"});
       conn.on("open",()=>{
-        if(myGen!==generation||acked)return;
-        clearTimeout(stageTimer);
-        playerJoinStatus("⏳ "+name+"<br>3/3 Direkt verbunden – Anmeldung bei Jan …");
+        if(stopped||acked)return;
         conn.send({type:"join",role,name,clientId:peer.id});
-        stageTimer=setTimeout(()=>{if(myGen===generation&&!acked){generation++;kill();setTimeout(attempt,500)}},5000);
+        playerJoinStatus("⏳ Verbindung steht – warte auf Bestätigung von Jan …");
       });
       conn.on("data",m=>{
-        if(myGen!==generation)return;
         if(m&&m.type==="joinAck"&&m.role===role){
-          acked=true; clearTimeout(stageTimer); clearTimeout(overall);
-          btn.disabled=false; show("playerView"); $("playerName").textContent=name;
+          if(acked)return;
+          acked=true;stopped=true;clearTimeout(localTimer);clearTimeout(retryTimer);clearTimeout(overallTimer);
+          btn.disabled=false;
+          show("playerView");$("playerName").textContent=name;
           $("buzzState").textContent="Verbunden ✓ – warte auf Jan …";
           return;
         }
         onClientMessage(m);
       });
-      conn.on("error",()=>{if(myGen===generation&&!acked){clearTimeout(stageTimer);generation++;kill();setTimeout(attempt,600)}});
-      conn.on("close",()=>{if(myGen===generation&&!acked){clearTimeout(stageTimer);generation++;kill();setTimeout(attempt,600)}});
+      conn.on("error",e=>{
+        clearTimeout(localTimer);
+        if(e&&e.type==="peer-unavailable") retry("Spielleiter noch nicht erreichbar");
+        else retry("Verbindung wurde nicht aufgebaut");
+      });
+      conn.on("close",()=>{if(!acked){clearTimeout(localTimer);retry("Verbindung getrennt")};});
     });
     peer.on("error",e=>{
-      if(myGen!==generation||acked)return;
-      clearTimeout(stageTimer);
-      if(e&&e.type==="peer-unavailable"){
-        playerJoinStatus("⏳ Raum ist registriert, aber die direkte Verbindung kam nicht zustande.<br>Neuer Versuch …");
-      }
-      generation++;kill();setTimeout(attempt,700);
+      clearTimeout(localTimer);
+      if(e&&e.type==="peer-unavailable") retry("Spielleiter noch nicht erreichbar");
+      else if(e&&e.type==="network") retry("Netzwerkverbindung unterbrochen");
+      else retry("Verbindungsserver meldet "+(e.type||"einen Fehler"));
     });
   };
 
-  kill();
-  overall=setTimeout(()=>finishFail("Keine stabile Direktverbindung möglich. Das ist kein falscher Raumcode. Bei mehreren Handys kann die reine Peer-to-Peer-Verbindung an Netz/NAT bzw. der Zahl direkter Verbindungen scheitern."),30000);
-  attempt();
+  overallTimer=setTimeout(()=>finalFail("Der Raum <b>"+targetRoom+"</b> ist nach mehreren Versuchen nicht erreichbar. Prüfe, ob beim Spielleiter „Raum aktiv“ steht und ob der Raumcode stimmt."),25000);
+  connectAttempt();
 }
 function onHostMessage(m,c){
   if(m&&m.type==="qkBet" && modeName==="quotenkoma"){ qkSubmit(m.team,m.bets); return; }
@@ -1890,7 +1881,7 @@ function hostRulesHtml(mode){
     tourpics:{name:"Blackout-Bilder",who:"Kapitäne",buzz:"Ja",text:rosterRuleText()+" Die Teams beraten gemeinsam, nur die Kapitäne buzzern. Das Foto wird auf TV/Zuschauer und bei den Kapitänen gezeigt. Richtiger Ort = 2 Punkte. Danach darf dasselbe Team das Jahr raten; richtiges Jahr = +1 Punkt."},
     zimmer:{name:"Bettgeflüster",who:"Einzelspieler",buzz:"Nein",text:(KLEMM_DABEI
       ?"Klemm dabei: Vor Ort zwischen Variante 1 (Couch gut: Jan und Fabian je Einzelzimmer; 4 Doppelzimmer + 1 Couch) und Variante 2 (Couch schlecht: Jan + Fabian zusammen; 4 Doppelzimmer + 1 Einzelzimmer) wählen."
-      :"Klemm fällt aus: Variante 3 wird automatisch verwendet. Jan und Fabian bekommen jeweils ein Einzelzimmer; die übrigen 8 Spieler bilden 4 Doppelzimmer. Couch egal.")+" Runde 1 ist Higher or Lower – Bedtime Stories mit 3 Leben und Sudden Death."},
+      :"Jan und Fabian bekommen jeweils ein Einzelzimmer; die übrigen 8 Spieler bilden 4 Doppelzimmer. Couch egal.")+" Runde 1 ist Higher or Lower – Bedtime Stories mit 3 Leben und Sudden Death."},
     promimix:{name:"Promi-Mix",who:"Einzelspieler / Zuschauer",buzz:"Nein",text:"Das KI-Mix-Bild wird Stück für Stück aufgedeckt. Sobald die Kombination erkannt wird, löst der Spielleiter auf und zeigt anschließend die Originalbilder."}
   };
   const r=R[mode]; if(!r)return "";
@@ -1902,12 +1893,12 @@ function hostRulesHtml(mode){
 // Die Teamzuordnung ist intern festgelegt. Die gewählte Tür ändert nur die Animation,
 // nicht das Zielteam. Nur der jeweils aktive Spieler kann auf seinem Gerät öffnen.
 const DOOR_TEAM = {
-  "Stefan":"team1","Andre":"team1","Michel":"team1","Klemm":"team1",
+  "Stefan":"team1","Andre":"team1","Michel":"team1",
   "Markus":"team2","Fabian":"team2","Mario":"team2",
   "Swen":"team3","Kevin":"team3","Patrick":"team3"
 };
 // Reihenfolge: Kevin beginnt; danach feste Reihenfolge. Klemm wird bei Ausfall automatisch entfernt.
-const DOOR_ORDER_MASTER=["Kevin","Stefan","Markus","Michel","Patrick","Andre","Fabian","Mario","Swen","Klemm"];
+const DOOR_ORDER_MASTER=["Kevin","Stefan","Markus","Michel","Patrick","Andre","Fabian","Mario","Swen"];
 let doorOrder=[],doorIndex=0,doorResults=[],doorPhase="idle",doorCurrent=null;
 
 function doorActivePlayers(){return DOOR_ORDER_MASTER.filter(n=>n!=="Klemm"||KLEMM_DABEI);}
@@ -2367,7 +2358,7 @@ function zgHostHtml(){
       ? "🛋️ <b>VARIANTE 1 · COUCH GUT:</b> Jan und Fabian bekommen jeweils ein Zimmer für sich. Die 9 Spieler bilden 4 Doppelzimmer; der letzte übrige Spieler bekommt die Couch."
       : zgVariant==="single"
         ? "🛏️ <b>VARIANTE 2 · COUCH SCHLECHT:</b> Jan + Fabian schlafen zusammen. Die 9 Spieler bilden 4 Doppelzimmer; ein Spieler bekommt ein Einzelzimmer. „Einzelzimmer“ bleibt bei der Partnerwahl verfügbar, bis es vergeben wurde."
-        : "🛏️ <b>VARIANTE 3 · KLEMM RAUS:</b> Jan und Fabian bekommen jeweils ein Zimmer für sich. Die übrigen 8 Spieler bilden 4 Doppelzimmer. Die Couch spielt keine Rolle.";
+        : "🛏️ <b>ZIMMER-AUSLOSUNG:</b> Jan und Fabian bekommen jeweils ein Zimmer für sich. Die übrigen 8 Spieler bilden 4 Doppelzimmer. Die Couch spielt keine Rolle.";
 
   let body="<div class='card'><h2>🏨 BETTGEFLÜSTER</h2>"+
     "<div class='status' style='text-align:left'>"+variantText+"<br>• Runde 1 ist <b>Higher or Lower – Bedtime Stories</b>: jeder startet mit 3 Leben.<br>• Der Gewinner wählt anschließend seinen Zimmerpartner"+(zgVariant==="single"?" oder das <b>Einzelzimmer</b>":"")+".<br>• Bereits verteilte Spieler sehen das weitere Spiel nur noch als Zuschauer.</div>"+
