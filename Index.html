@@ -1216,6 +1216,17 @@ function ensurePeer(){
   if(typeof Peer==="undefined"){alert("PeerJS konnte nicht geladen werden. Bitte Internetverbindung prüfen.");return false;}
   return true;
 }
+const PEER_OPTS={
+  debug:1,
+  pingInterval:3000,
+  config:{
+    iceServers:[
+      {urls:"stun:stun.l.google.com:19302"},
+      {urls:"stun:stun1.l.google.com:19302"}
+    ],
+    iceCandidatePoolSize:10
+  }
+};
 function openJoin(kind){
   role=kind;
   $("joinBox").classList.remove("hide");
@@ -1238,7 +1249,7 @@ function host(){
     conns={};
     room=roomCode();
     const wantedId="kroatien-"+room;
-    peer=new Peer(wantedId,{debug:0});
+    peer=new Peer(wantedId,PEER_OPTS);
     let opened=false;
     const timer=setTimeout(()=>{
       if(!opened){
@@ -1256,11 +1267,18 @@ function host(){
       refreshConnections();renderHost();
     });
     peer.on("connection",c=>{
-      c.on("data",m=>onHostMessage(m,c));
-      c.on("close",()=>{
-        const r=c._kroatienRole;
-        if(r && conns[r]===c){delete conns[r];refreshConnections();}
-      });
+      const bind=()=>{
+        if(c.metadata && c.metadata.role && String(c.metadata.role).startsWith("player:")){
+          c._pendingRole=c.metadata.role;
+        }
+        c.on("data",m=>onHostMessage(m,c));
+        c.on("close",()=>{
+          const r=c._kroatienRole;
+          if(r && conns[r]===c){delete conns[r];refreshConnections();}
+        });
+        c.on("error",()=>{});
+      };
+      if(c.open)bind(); else c.on("open",bind);
     });
     peer.on("disconnected",()=>{
       $("hostPeerStatus").className="status bad";
@@ -1292,9 +1310,9 @@ function join(teamRole){
   const attempt=()=>{
     if(done)return; tries++;
     try{if(conn)conn.close()}catch(e){} try{if(peer)peer.destroy()}catch(e){}
-    peer=new Peer(undefined,{debug:0});
+    peer=new Peer(undefined,PEER_OPTS);
     peer.on("open",()=>{
-      conn=peer.connect("kroatien-"+target,{reliable:true});
+      conn=peer.connect("kroatien-"+target,{});
       conn.on("open",()=>{
         done=true;
         conn.send({type:"join",role});
@@ -1320,79 +1338,70 @@ function joinPlayer(){
   if(!room){alert("Bitte Raumcode eingeben.");return;}
   const name=$("playerSelect").value;
   if(!name){alert("Bitte Spieler auswählen.");return;}
-  if(!window.Peer){playerJoinStatus("❌ PeerJS konnte nicht geladen werden. Seite neu laden / Internet prüfen.",true);return;}
+  if(!ensurePeer())return;
 
   role="player:"+name;
-  const btn=$("playerJoinBtn"); btn.disabled=true;
-  const targetRoom=room;
-  let attempt=0, stopped=false, acked=false, retryTimer=null, overallTimer=null;
+  const targetRoom=room, btn=$("playerJoinBtn");
+  btn.disabled=true;
+  let generation=0, attempts=0, acked=false, overall=null;
 
-  try{if(conn){conn.close();conn=null}}catch(e){}
-  try{if(peer){peer.destroy();peer=null}}catch(e){}
-
-  const cleanup=()=>{
-    clearTimeout(retryTimer);clearTimeout(overallTimer);
-    try{if(conn)conn.close()}catch(e){}
-    try{if(peer)peer.destroy()}catch(e){}
-    conn=null;peer=null;
+  const kill=()=>{
+    try{if(conn){conn.close();conn=null}}catch(e){}
+    try{if(peer){peer.destroy();peer=null}}catch(e){}
   };
-  const finalFail=(msg)=>{
-    if(stopped||acked)return; stopped=true; cleanup(); btn.disabled=false;
+  const finishFail=(msg)=>{
+    if(acked)return;
+    generation++; clearTimeout(overall); kill(); btn.disabled=false;
     playerJoinStatus("❌ "+msg+"<br><button id='playerRetryBtn' class='secondary' style='margin-top:8px'>ERNEUT VERBINDEN</button>",true);
     setTimeout(()=>{const r=$("playerRetryBtn");if(r)r.onclick=joinPlayer},0);
   };
-  const retry=(why)=>{
-    if(stopped||acked)return;
-    try{if(conn)conn.close()}catch(e){} try{if(peer)peer.destroy()}catch(e){}
-    conn=null;peer=null;
-    playerJoinStatus("⏳ "+name+": "+why+"<br>Neuer Versuch "+(attempt+1)+" …");
-    retryTimer=setTimeout(connectAttempt,900);
-  };
-  const connectAttempt=()=>{
-    if(stopped||acked)return;
-    attempt++;
-    playerJoinStatus("⏳ "+name+" verbindet sich mit Raum <b>"+targetRoom+"</b> …<br>Versuch "+attempt);
-    peer=new Peer(undefined,{debug:0});
-    let peerOpened=false;
-    const localTimer=setTimeout(()=>{if(!acked)retry("Verbindung dauert länger")},5000);
+  const attempt=()=>{
+    if(acked)return;
+    const myGen=++generation; attempts++; kill();
+    playerJoinStatus("⏳ "+name+" · Versuch "+attempts+"<br>1/3 Verbindungsserver …");
+    peer=new Peer(undefined,PEER_OPTS);
+    let stageTimer=setTimeout(()=>{if(myGen===generation&&!acked){generation++;kill();setTimeout(attempt,500)}},7000);
 
     peer.on("open",()=>{
-      peerOpened=true;
-      if(stopped||acked)return;
-      conn=peer.connect("kroatien-"+targetRoom,{reliable:true,serialization:"json"});
+      if(myGen!==generation||acked)return;
+      clearTimeout(stageTimer);
+      playerJoinStatus("⏳ "+name+" · Versuch "+attempts+"<br>2/3 Raum "+targetRoom+" gefunden – direkte Verbindung …");
+      conn=peer.connect("kroatien-"+targetRoom,{serialization:"json",metadata:{role,name}});
+      stageTimer=setTimeout(()=>{if(myGen===generation&&!acked){generation++;kill();setTimeout(attempt,500)}},9000);
+
       conn.on("open",()=>{
-        if(stopped||acked)return;
+        if(myGen!==generation||acked)return;
+        clearTimeout(stageTimer);
+        playerJoinStatus("⏳ "+name+"<br>3/3 Direkt verbunden – Anmeldung bei Jan …");
         conn.send({type:"join",role,name,clientId:peer.id});
-        playerJoinStatus("⏳ Verbindung steht – warte auf Bestätigung von Jan …");
+        stageTimer=setTimeout(()=>{if(myGen===generation&&!acked){generation++;kill();setTimeout(attempt,500)}},5000);
       });
       conn.on("data",m=>{
+        if(myGen!==generation)return;
         if(m&&m.type==="joinAck"&&m.role===role){
-          if(acked)return;
-          acked=true;stopped=true;clearTimeout(localTimer);clearTimeout(retryTimer);clearTimeout(overallTimer);
-          btn.disabled=false;
-          show("playerView");$("playerName").textContent=name;
+          acked=true; clearTimeout(stageTimer); clearTimeout(overall);
+          btn.disabled=false; show("playerView"); $("playerName").textContent=name;
           $("buzzState").textContent="Verbunden ✓ – warte auf Jan …";
           return;
         }
         onClientMessage(m);
       });
-      conn.on("error",e=>{
-        clearTimeout(localTimer);
-        if(e&&e.type==="peer-unavailable") retry("Spielleiter noch nicht erreichbar");
-        else retry("Verbindung wurde nicht aufgebaut");
-      });
-      conn.on("close",()=>{if(!acked){clearTimeout(localTimer);retry("Verbindung getrennt")};});
+      conn.on("error",()=>{if(myGen===generation&&!acked){clearTimeout(stageTimer);generation++;kill();setTimeout(attempt,600)}});
+      conn.on("close",()=>{if(myGen===generation&&!acked){clearTimeout(stageTimer);generation++;kill();setTimeout(attempt,600)}});
     });
     peer.on("error",e=>{
-      clearTimeout(localTimer);
-      if(e&&e.type==="peer-unavailable") retry("Spielleiter noch nicht erreichbar");
-      else if(e&&e.type==="network") retry("Netzwerkverbindung unterbrochen");
-      else retry("Verbindungsserver meldet "+(e.type||"einen Fehler"));
+      if(myGen!==generation||acked)return;
+      clearTimeout(stageTimer);
+      if(e&&e.type==="peer-unavailable"){
+        playerJoinStatus("⏳ Raum ist registriert, aber die direkte Verbindung kam nicht zustande.<br>Neuer Versuch …");
+      }
+      generation++;kill();setTimeout(attempt,700);
     });
   };
 
-  overallTimer=setTimeout(()=>finalFail("Der Raum <b>"+targetRoom+"</b> ist nach mehreren Versuchen nicht erreichbar. Prüfe, ob beim Spielleiter „Raum aktiv“ steht und ob der Raumcode stimmt."),25000);
-  connectAttempt();
+  kill();
+  overall=setTimeout(()=>finishFail("Keine stabile Direktverbindung möglich. Das ist kein falscher Raumcode. Bei mehreren Handys kann die reine Peer-to-Peer-Verbindung an Netz/NAT bzw. der Zahl direkter Verbindungen scheitern."),30000);
+  attempt();
 }
 function onHostMessage(m,c){
   if(m&&m.type==="qkBet" && modeName==="quotenkoma"){ qkSubmit(m.team,m.bets); return; }
