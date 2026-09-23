@@ -306,7 +306,7 @@ Der Klemm-Status ist passwortgeschützt. Die Team-Auslosung „Drei Türen“ st
 </section>
 
 <section id="hostView" class="hide">
-<div class="card"><div class="muted">Raumcode</div><div id="roomCode" class="big code"></div><div id="connections"></div></div>
+<div class="card"><div class="muted">Raumcode</div><div id="roomCode" class="big code"></div><div id="hostPeerStatus" class="status">⏳ Raum wird registriert …</div><div id="connections"></div></div>
 <div class="tabs">
 <button data-mode="setup" style="background:#17324d;color:#fff">⚙️ REISE-SETUP</button><button data-mode="doors" style="background:#118ab2;color:#fff">🚪 DREI TÜREN</button><button data-mode="quiz">Adria-Abitur</button>
 <button data-mode="estimate">Dicht daneben</button>
@@ -1225,39 +1225,91 @@ function openJoin(kind){
   $("roomIn").focus();
 }
 function host(){
-  role="host"; room=roomCode();
-  show("hostView"); $("roomCode").textContent=room; refreshConnections(); renderHost();
   if(!ensurePeer())return;
-  peer=new Peer("kroatien-"+room);
-  peer.on("open",()=>{ refreshConnections(); renderHost(); });
-  peer.on("connection",c=>{
-    c.on("data",m=>onHostMessage(m,c));
-    c.on("close",()=>{
-      const r=c._kroatienRole;
-      if(r && conns[r]===c){delete conns[r];refreshConnections();}
+  role="host";
+  show("hostView");
+  $("roomCode").textContent="…";
+  $("hostPeerStatus").className="status";
+  $("hostPeerStatus").innerHTML="⏳ Raum wird beim Verbindungsserver registriert …";
+  refreshConnections();renderHost();
+
+  const register=()=>{
+    try{if(peer)peer.destroy()}catch(e){}
+    conns={};
+    room=roomCode();
+    const wantedId="kroatien-"+room;
+    peer=new Peer(wantedId,{debug:0});
+    let opened=false;
+    const timer=setTimeout(()=>{
+      if(!opened){
+        $("hostPeerStatus").className="status bad";
+        $("hostPeerStatus").innerHTML="❌ Raum konnte nicht registriert werden. Neuer Versuch …";
+        setTimeout(register,700);
+      }
+    },8000);
+
+    peer.on("open",id=>{
+      opened=true;clearTimeout(timer);
+      $("roomCode").textContent=room;
+      $("hostPeerStatus").className="status ok";
+      $("hostPeerStatus").innerHTML="✓ Raum aktiv – Spieler können jetzt beitreten.";
+      refreshConnections();renderHost();
     });
-  });
-  peer.on("error",e=>alert("Verbindungsfehler: "+e.type));
+    peer.on("connection",c=>{
+      c.on("data",m=>onHostMessage(m,c));
+      c.on("close",()=>{
+        const r=c._kroatienRole;
+        if(r && conns[r]===c){delete conns[r];refreshConnections();}
+      });
+    });
+    peer.on("disconnected",()=>{
+      $("hostPeerStatus").className="status bad";
+      $("hostPeerStatus").innerHTML="⚠ Verbindung zum Server unterbrochen – Wiederverbindung läuft …";
+      try{peer.reconnect()}catch(e){}
+    });
+    peer.on("error",e=>{
+      clearTimeout(timer);
+      // ID collision/stale registration: silently choose a completely new room code.
+      if(e && (e.type==="unavailable-id" || e.type==="server-error")){
+        $("hostPeerStatus").className="status bad";
+        $("hostPeerStatus").innerHTML="⚠ Raumcode war noch belegt. Neuer Raum wird erzeugt …";
+        setTimeout(register,500);
+      } else {
+        $("hostPeerStatus").className="status bad";
+        $("hostPeerStatus").innerHTML="❌ Verbindungsfehler: "+(e.type||"unbekannt")+" – Seite ggf. neu laden.";
+      }
+    });
+  };
+  register();
 }
 function join(teamRole){
   if(!ensurePeer())return;
   room=$("roomIn").value.trim().toUpperCase();
   if(!room){alert("Bitte Raumcode eingeben.");return;}
   role=teamRole;
-  peer=new Peer();
-  peer.on("open",()=>{
-    conn=peer.connect("kroatien-"+room,{reliable:true});
-    conn.on("open",()=>{
-      conn.send({type:"join",role});
-      if(role==="screen") show("screenView");
-      else{
-        show("captainView");
-        $("teamName").innerHTML="<b>"+D.teams[role].name+"</b>"+teamRosterHtml(role);
-      }
+  const target=room;
+  let tries=0, done=false;
+  const attempt=()=>{
+    if(done)return; tries++;
+    try{if(conn)conn.close()}catch(e){} try{if(peer)peer.destroy()}catch(e){}
+    peer=new Peer(undefined,{debug:0});
+    peer.on("open",()=>{
+      conn=peer.connect("kroatien-"+target,{reliable:true});
+      conn.on("open",()=>{
+        done=true;
+        conn.send({type:"join",role});
+        if(role==="screen") show("screenView");
+        else{
+          show("captainView");
+          $("teamName").innerHTML="<b>"+D.teams[role].name+"</b>"+teamRosterHtml(role);
+        }
+      });
+      conn.on("data",onClientMessage);
+      conn.on("error",()=>{if(!done&&tries<5)setTimeout(attempt,800);else if(!done)alert("Spielleiter nicht erreichbar. Raumcode und Status „Raum aktiv“ prüfen.")});
     });
-    conn.on("data",onClientMessage);
-    conn.on("error",()=>alert("Verbindung zum Spielleiter fehlgeschlagen."));
-  });
+    peer.on("error",()=>{if(!done&&tries<5)setTimeout(attempt,800);else if(!done)alert("Verbindung zum Spielleiter fehlgeschlagen.")});
+  };
+  attempt();
 }
 function playerJoinStatus(text,bad=false){
   const e=$("playerJoinStatus"); if(!e)return;
@@ -1271,54 +1323,76 @@ function joinPlayer(){
   if(!window.Peer){playerJoinStatus("❌ PeerJS konnte nicht geladen werden. Seite neu laden / Internet prüfen.",true);return;}
 
   role="player:"+name;
-  const btn=$("playerJoinBtn");
-  btn.disabled=true;
-  playerJoinStatus("⏳ "+name+" wird verbunden …");
+  const btn=$("playerJoinBtn"); btn.disabled=true;
+  const targetRoom=room;
+  let attempt=0, stopped=false, acked=false, retryTimer=null, overallTimer=null;
 
-  // Jeder Beitrittsversuch bekommt garantiert einen frischen, zufälligen Peer.
-  // Das verhindert hängende Alt-Verbindungen nach Reload, Zurück-Navigation oder Netzwechsel.
-  try{ if(conn){conn.close();conn=null;} }catch(e){}
-  try{ if(peer){peer.destroy();peer=null;} }catch(e){}
+  try{if(conn){conn.close();conn=null}}catch(e){}
+  try{if(peer){peer.destroy();peer=null}}catch(e){}
 
-  let finished=false, timeout=null;
-  const fail=(msg)=>{
-    if(finished)return; finished=true;
-    clearTimeout(timeout); btn.disabled=false;
-    playerJoinStatus("❌ "+msg+"<br><button id='playerRetryBtn' class='secondary' style='margin-top:8px'>ERNEUT VERBINDEN</button>",true);
-    setTimeout(()=>{const r=$("playerRetryBtn");if(r)r.onclick=joinPlayer;},0);
-    try{if(conn)conn.close()}catch(e){} try{if(peer)peer.destroy()}catch(e){}
+  const cleanup=()=>{
+    clearTimeout(retryTimer);clearTimeout(overallTimer);
+    try{if(conn)conn.close()}catch(e){}
+    try{if(peer)peer.destroy()}catch(e){}
     conn=null;peer=null;
   };
+  const finalFail=(msg)=>{
+    if(stopped||acked)return; stopped=true; cleanup(); btn.disabled=false;
+    playerJoinStatus("❌ "+msg+"<br><button id='playerRetryBtn' class='secondary' style='margin-top:8px'>ERNEUT VERBINDEN</button>",true);
+    setTimeout(()=>{const r=$("playerRetryBtn");if(r)r.onclick=joinPlayer},0);
+  };
+  const retry=(why)=>{
+    if(stopped||acked)return;
+    try{if(conn)conn.close()}catch(e){} try{if(peer)peer.destroy()}catch(e){}
+    conn=null;peer=null;
+    playerJoinStatus("⏳ "+name+": "+why+"<br>Neuer Versuch "+(attempt+1)+" …");
+    retryTimer=setTimeout(connectAttempt,900);
+  };
+  const connectAttempt=()=>{
+    if(stopped||acked)return;
+    attempt++;
+    playerJoinStatus("⏳ "+name+" verbindet sich mit Raum <b>"+targetRoom+"</b> …<br>Versuch "+attempt);
+    peer=new Peer(undefined,{debug:0});
+    let peerOpened=false;
+    const localTimer=setTimeout(()=>{if(!acked)retry("Verbindung dauert länger")},5000);
 
-  timeout=setTimeout(()=>fail("Keine Verbindung nach 10 Sekunden. Bitte erneut versuchen."),10000);
-
-  peer=new Peer(undefined,{debug:0});
-  peer.on("open",()=>{
-    if(finished)return;
-    playerJoinStatus("⏳ Verbindung zu Raum <b>"+room+"</b> …");
-    conn=peer.connect("kroatien-"+room,{reliable:true,serialization:"json"});
-    conn.on("open",()=>{
-      if(finished)return;
-      conn.send({type:"join",role,name,clientId:peer.id});
-      // Erst nach Bestätigung des Spielleiters gilt der Spieler als verbunden.
-      playerJoinStatus("⏳ Angemeldet – warte auf Bestätigung …");
-    });
-    conn.on("data",m=>{
-      if(m&&m.type==="joinAck"&&m.role===role){
-        if(!finished){
-          finished=true;clearTimeout(timeout);btn.disabled=false;
+    peer.on("open",()=>{
+      peerOpened=true;
+      if(stopped||acked)return;
+      conn=peer.connect("kroatien-"+targetRoom,{reliable:true,serialization:"json"});
+      conn.on("open",()=>{
+        if(stopped||acked)return;
+        conn.send({type:"join",role,name,clientId:peer.id});
+        playerJoinStatus("⏳ Verbindung steht – warte auf Bestätigung von Jan …");
+      });
+      conn.on("data",m=>{
+        if(m&&m.type==="joinAck"&&m.role===role){
+          if(acked)return;
+          acked=true;stopped=true;clearTimeout(localTimer);clearTimeout(retryTimer);clearTimeout(overallTimer);
+          btn.disabled=false;
           show("playerView");$("playerName").textContent=name;
           $("buzzState").textContent="Verbunden ✓ – warte auf Jan …";
+          return;
         }
-        return;
-      }
-      onClientMessage(m);
+        onClientMessage(m);
+      });
+      conn.on("error",e=>{
+        clearTimeout(localTimer);
+        if(e&&e.type==="peer-unavailable") retry("Spielleiter noch nicht erreichbar");
+        else retry("Verbindung wurde nicht aufgebaut");
+      });
+      conn.on("close",()=>{if(!acked){clearTimeout(localTimer);retry("Verbindung getrennt")};});
     });
-    conn.on("close",()=>{if(!finished)fail("Verbindung wurde vorzeitig getrennt.");});
-    conn.on("error",e=>fail("Verbindung zum Spielleiter fehlgeschlagen ("+(e.type||"Fehler")+")."));
-  });
-  peer.on("error",e=>fail("Verbindungsfehler ("+(e.type||"Fehler")+")."));
-  peer.on("disconnected",()=>{if(!finished)fail("Verbindung zum Server unterbrochen.");});
+    peer.on("error",e=>{
+      clearTimeout(localTimer);
+      if(e&&e.type==="peer-unavailable") retry("Spielleiter noch nicht erreichbar");
+      else if(e&&e.type==="network") retry("Netzwerkverbindung unterbrochen");
+      else retry("Verbindungsserver meldet "+(e.type||"einen Fehler"));
+    });
+  };
+
+  overallTimer=setTimeout(()=>finalFail("Der Raum <b>"+targetRoom+"</b> ist nach mehreren Versuchen nicht erreichbar. Prüfe, ob beim Spielleiter „Raum aktiv“ steht und ob der Raumcode stimmt."),25000);
+  connectAttempt();
 }
 function onHostMessage(m,c){
   if(m&&m.type==="qkBet" && modeName==="quotenkoma"){ qkSubmit(m.team,m.bets); return; }
