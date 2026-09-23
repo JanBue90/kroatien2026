@@ -277,15 +277,6 @@ window.addEventListener("error",function(e){
 <section id="setup" class="card">
 <h2>Verbinden</h2>
 <p class="muted">Alle Geräte öffnen dieselbe Seite. Jan erstellt den Raum, die Kapitäne treten mit dem Raumcode bei.</p>
-<div class="status hide" style="border:3px solid #118ab2;background:#eefaff;margin-bottom:12px">
-<b style="font-size:20px">🔒 Klemm & Team-Auslosung</b><br>
-Der Klemm-Status ist passwortgeschützt. Die Team-Auslosung „Drei Türen“ startet danach im Spielleiterbereich.
-<div class="grid" style="margin-top:10px">
-<button id="setupKlemmYes" class="good">✓ KLEMM DABEI</button>
-<button id="setupKlemmNo" class="danger">✕ KLEMM FÄLLT AUS</button>
-</div>
-<div id="setupKlemmState" style="font-weight:900;margin-top:8px"></div>
-</div>
 <div class="grid">
 <button id="hostBtn">JAN – SPIELLEITER</button>
 <button id="captainBtn" class="secondary">KAPITÄN</button>
@@ -2566,15 +2557,6 @@ function acceptCategory(t){
 
 
 
-
-function refreshSetupKlemmState(){
-  const e=$("setupKlemmState");
-  if(e)e.textContent=KLEMM_DABEI?"Aktuell: KLEMM DABEI → "+travelerCount()+" Reisende · Teams "+teamSizeText():"Aktuell: KLEMM FÄLLT AUS → "+travelerCount()+" Reisende · Teams "+teamSizeText();
-}
-const sky=$("setupKlemmYes"),skn=$("setupKlemmNo");
-if(sky)sky.addEventListener("click",()=>setKlemmDabeiProtected(true));
-if(skn)skn.addEventListener("click",()=>setKlemmDabeiProtected(false));
-refreshSetupKlemmState();
 
 $("hostBtn").addEventListener("click",()=>{
   const pw=prompt("Spielleiter-Passwort:");
