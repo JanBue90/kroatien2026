@@ -272,7 +272,7 @@ window.addEventListener("error",function(e){
 </script>
 </head>
 <body>
-<header>🇭🇷 Kroatien-Olympiade LIVE <span style="font-size:12px;opacity:.78">ADRIA BEACH EDITION · COMPACT · Saufy-Nauten 2026</span> <span style="display:inline-block;margin-left:8px;padding:2px 7px;border-radius:6px;background:#fff;color:#087f9c;font-weight:900;font-size:12px;vertical-align:middle">V4 FIREBASE · EX-WM</span></header>
+<header>🇭🇷 Kroatien-Olympiade LIVE <span style="font-size:12px;opacity:.78">ADRIA BEACH EDITION · COMPACT · Saufy-Nauten 2026</span> <span style="display:inline-block;margin-left:8px;padding:2px 7px;border-radius:6px;background:#fff;color:#087f9c;font-weight:900;font-size:12px;vertical-align:middle">V5 FIREBASE · WER BIN ICH?</span></header>
 <div class="wrap">
 <section id="setup" class="card">
 <h2>Verbinden</h2>
@@ -301,7 +301,7 @@ window.addEventListener("error",function(e){
 <div class="tabs">
 <button data-mode="doors" style="background:#118ab2;color:#fff">🚪 DREI TÜREN</button><button data-mode="quiz">Adria-Abitur</button>
 <button data-mode="estimate">Dicht daneben</button>
-<button data-mode="category">Listen-Lotto</button><button data-mode="higherlower">Higher or Lower</button><button data-mode="higherlowerteam">Higher or Lower · TEAM</button><button data-mode="higherlowerbed">Higher or Lower - Bedtime Story</button><button data-mode="emoji">Emoji-Eskalation</button><button data-mode="transfertinder">⚽ Transfer-Tinder</button><button data-mode="quotenkoma" style="background:#3b0066;color:#fff;border-color:#7b2cbf">🎰 QUOTEN-KOMA</button><button data-mode="buzzer">Buzzer</button><button data-mode="tourpics">Blackout-Bilder</button><button data-mode="exwm" style="background:#8b1e1e;color:#fff;border-color:#5e1111">🏆 EX-WM</button><button data-mode="zimmer" class="good" style="font-size:17px;border:3px solid #0d6639">🏨 BETTGEFLÜSTER – ZIMMER AUSLOSEN</button>
+<button data-mode="category">Listen-Lotto</button><button data-mode="higherlower">Higher or Lower</button><button data-mode="higherlowerteam">Higher or Lower · TEAM</button><button data-mode="higherlowerbed">Higher or Lower - Bedtime Story</button><button data-mode="emoji">Emoji-Eskalation</button><button data-mode="transfertinder">⚽ Transfer-Tinder</button><button data-mode="quotenkoma" style="background:#3b0066;color:#fff;border-color:#7b2cbf">🎰 QUOTEN-KOMA</button><button data-mode="buzzer">Buzzer</button><button data-mode="tourpics">Blackout-Bilder</button><button data-mode="exwm" style="background:#8b1e1e;color:#fff;border-color:#5e1111">🏆 EX-WM</button><button data-mode="werbinich">🎭 Wer bin ich?</button><button data-mode="zimmer" class="good" style="font-size:17px;border:3px solid #0d6639">🏨 BETTGEFLÜSTER – ZIMMER AUSLOSEN</button>
 </div>
 <div id="hostGame"></div>
 </section>
@@ -1356,6 +1356,7 @@ function joinPlayer(){
     return pr.set({role,name,online:true,ts:firebase.database.ServerValue.TIMESTAMP}).then(()=>{
       pr.onDisconnect().remove();
       conn.send({type:"join",role,name});
+      wbiClientListen();
       btn.disabled=false;show("playerView");$("playerName").textContent=name;
       $("buzzState").textContent="Verbunden ✓ · FIREBASE";
     });
@@ -1842,6 +1843,7 @@ function hostRulesHtml(mode){
     quiz:{name:"Adria-Abitur",who:"Kapitäne",buzz:"Nein",text:rosterRuleText()+" 20 Kroatien-Fragen. Alle drei Teams antworten gleichzeitig über ihre Kapitäne. Pro Frage laufen 30 Sekunden. Richtige Antwort = 1 Punkt. Sobald alle Teams geantwortet haben, wird automatisch aufgelöst."},
     estimate:{name:"Dicht daneben",who:"Kapitäne",buzz:"Nein",text:rosterRuleText()+" Alle drei Kapitäne geben gleichzeitig eine Schätzung in Kilometern ab. Pro Frage laufen 60 Sekunden. Bei der Auflösung sehen Spielleiter, Kapitäne und TV/Zuschauer die richtige Zahl, jede Schätzung und die jeweilige Differenz. Nächstes Team = 2 Punkte, zweites = 1 Punkt, drittes = 0."},
     category:{name:"Listen-Lotto",who:"Kapitäne",buzz:"Nein",text:rosterRuleText()+" Die Teams spielen nacheinander. Das aktive Team hat 35 Sekunden für einen gültigen Begriff. Richtige Antwort = nächstes noch aktives Team wird automatisch ausgewählt. Falsche Antwort = Team ist für die Kategorie raus und nicht mehr auswählbar. Im Dropdown wird das zuletzt antwortende Team markiert. Letztes Team gewinnt die Kategorie."},
+    werbinich:{name:"Wer bin ich?",who:"Einzelspieler · Teilnehmer frei wählbar",buzz:"Nein",text:"Spielleiter wählt Teilnehmer. Jeder gibt auf seinem Handy einen Vorschlag ab. Danach zufällige Verteilung ohne eigenen Vorschlag. Jeder sieht alle anderen Identitäten, aber nicht die eigene. Spielleiter sieht die komplette Auflösung."},
     exwm:{name:"Ex-WM",who:"8 Einzelspieler",buzz:"Nein",text:"K.-o.-Turnier mit 8 Teilnehmern: Jan, Fabian, Kevin, Markus, Stefan, Patrick, Mario und Swen. Andre und Michel spielen bei der Ex-WM nicht mit. Zufällige Auslosung in vier Viertelfinals; die Sieger rücken automatisch ins Halbfinale und anschließend ins Finale vor."},
     higherlower:{name:"Higher or Lower",who:"Einzelspieler",buzz:"Nein",text:"Alle ausgewählten Einzelspieler beantworten dieselbe Frage gleichzeitig mit HÖHER oder NIEDRIGER. 30 Sekunden pro Frage. Falsch oder keine Antwort = 1 Leben weg. Mit 0 Leben scheidet der Spieler aus; letzter Spieler mit Leben gewinnt."},
     higherlowerteam:{name:"Higher or Lower · TEAM",who:"Kapitäne",buzz:"Nein",text:rosterRuleText()+" Alle drei Teams spielen gleichzeitig; nur die Kapitäne tippen HÖHER oder NIEDRIGER. Die übrigen Spieler beraten über TV/Zuschauer mit. 1–5 Teamleben einstellbar. 30 Sekunden pro Frage; sobald alle noch aktiven Teams geantwortet haben, wird automatisch aufgelöst. Falsch oder keine Antwort = 1 Teamleben weg."},
@@ -1937,6 +1939,29 @@ function doorHostHtml(){
 }
 
 
+
+/* ===================== WER BIN ICH? ===================== */
+const WBI_ALL=["Jan","Fabian","Kevin","Markus","Stefan","Michel","Patrick","Mario","Andre","Swen"];
+let wbiState={phase:"setup",participants:[],suggestions:{},assignment:{}};
+function wbiRef(){return fbRoomRef?fbRoomRef.child("games/werbinich"):null;}
+function wbiHostListen(){const r=wbiRef();if(!r||wbiHostListen._room===room)return;wbiHostListen._room=room;fbListen(r,"value",snap=>{wbiState=Object.assign({phase:"setup",participants:[],suggestions:{},assignment:{}},snap.val()||{});if(role==="host"&&modeName==="werbinich")renderHost();});}
+function wbiStart(){const ps=[...document.querySelectorAll(".wbiPart:checked")].map(x=>x.value);if(ps.length<2){alert("Bitte mindestens 2 Spieler auswählen.");return;}wbiRef().set({phase:"suggest",participants:ps,suggestions:{},assignment:{}});}
+function wbiDerange(ps,sg){if(ps.some(p=>!sg[p]))return null;let owners=ps.slice();for(let t=0;t<10000;t++){for(let i=owners.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[owners[i],owners[j]]=[owners[j],owners[i]];}if(ps.every((p,i)=>owners[i]!==p)){let a={};ps.forEach((p,i)=>a[p]={text:sg[owners[i]],from:owners[i]});return a;}}return null;}
+function wbiDistribute(){const a=wbiDerange(wbiState.participants||[],wbiState.suggestions||{});if(!a){alert("Noch nicht alle Vorschläge abgegeben.");return;}wbiRef().update({phase:"play",assignment:a});}
+function wbiReset(){if(confirm("Wer bin ich? komplett zurücksetzen?"))wbiRef().set({phase:"setup",participants:[],suggestions:{},assignment:{}});}
+function wbiHostHtml(){const st=wbiState,ps=st.participants||[],sg=st.suggestions||{},as=st.assignment||{};
+if(st.phase==="setup")return `<div class="card"><h2>🎭 Wer bin ich?</h2><p><b>Wer spielt mit?</b></p><div class="grid">${WBI_ALL.map(n=>`<label class="status" style="display:flex;gap:10px;align-items:center"><input class="wbiPart" type="checkbox" value="${n}" checked> <b>${n}</b></label>`).join("")}</div><button id="wbiStart" class="good" style="width:100%;margin-top:14px">VORSCHLÄGE STARTEN</button></div>`;
+if(st.phase==="suggest"){const done=ps.filter(n=>sg[n]).length;return `<div class="card"><h2>🎭 Vorschläge</h2><div class="status"><b>${done}/${ps.length}</b> abgegeben</div>${ps.map(n=>`<div class="status">${sg[n]?"✅":"⏳"} <b>${n}</b> ${sg[n]?"hat abgegeben":"wartet noch"}</div>`).join("")}<button id="wbiDist" class="good" style="width:100%;margin-top:12px" ${done!==ps.length?"disabled":""}>🎲 ZUFÄLLIG VERTEILEN</button><button id="wbiReset" class="danger" style="width:100%;margin-top:8px">RESET</button></div>`;}
+return `<div class="card"><h2>🎭 Wer bin ich? · Auflösung</h2>${ps.map(n=>`<div class="status"><b>${n}</b> → ${as[n]?as[n].text:"–"} <span class="muted">(von ${as[n]?as[n].from:"–"})</span></div>`).join("")}<button id="wbiReset" class="danger" style="width:100%;margin-top:12px">NEUE RUNDE / RESET</button></div>`;}
+function wbiBindHost(){let a=$("wbiStart"),b=$("wbiDist"),c=$("wbiReset");if(a)a.onclick=wbiStart;if(b)b.onclick=wbiDistribute;if(c)c.onclick=wbiReset;}
+function wbiClientHtml(name){const st=wbiState,ps=st.participants||[],sg=st.suggestions||{},as=st.assignment||{};
+if(!ps.includes(name))return `<div class="card"><h2>🎭 Wer bin ich?</h2><div class="status">Du spielst in dieser Runde nicht mit.</div></div>`;
+if(st.phase==="suggest")return `<div class="card"><h2>🎭 Wer bin ich?</h2>${sg[name]?`<div class="status ok">✅ Vorschlag abgegeben.<br><b>Warte auf die anderen.</b></div>`:`<p>Wen schlägst du vor?</p><input id="wbiInput" maxlength="80" placeholder="Name / Person / Figur …" style="width:100%;font-size:18px;padding:12px"><button id="wbiSubmit" class="good" style="width:100%;margin-top:10px">VORSCHLAG ABGEBEN</button>`}</div>`;
+if(st.phase==="play")return `<div class="card"><h2>🎭 Wer bin ich?</h2><div class="status" style="text-align:center"><b>Deine eigene Identität bleibt geheim 🤫</b></div><h3>Die anderen:</h3>${ps.filter(n=>n!==name).map(n=>`<div class="status"><b>${n}</b> → ${as[n]?as[n].text:"–"}</div>`).join("")}</div>`;
+return `<div class="card"><h2>🎭 Wer bin ich?</h2><div class="status">Warte auf den Spielleiter.</div></div>`;}
+function wbiRenderClient(){if(!role||!role.startsWith("player:"))return;let name=role.slice(7),pv=$("playerView");if(!pv)return;let box=$("wbiPlayerBox");if(!box){box=document.createElement("div");box.id="wbiPlayerBox";pv.appendChild(box);}box.innerHTML=wbiClientHtml(name);let b=$("wbiSubmit");if(b)b.onclick=()=>{let v=($("wbiInput").value||"").trim();if(!v){alert("Bitte einen Vorschlag eingeben.");return;}wbiRef().child("suggestions/"+fbKey(name)).set(v);};}
+function wbiClientListen(){const r=wbiRef();if(!r||wbiClientListen._key===room+"|"+role)return;wbiClientListen._key=room+"|"+role;fbListen(r,"value",snap=>{wbiState=Object.assign({phase:"setup",participants:[],suggestions:{},assignment:{}},snap.val()||{});wbiRenderClient();});}
+
 /* ===================== EX-WM ===================== */
 const EXWM_PLAYERS=["Jan","Fabian","Kevin","Markus","Stefan","Patrick","Mario","Swen"];
 const EXWM_KEY="kroatien_exwm_v1";
@@ -1988,6 +2013,7 @@ function exwmBind(){
 }
 
 function renderHost(){
+  if(modeName==="werbinich"){wbiHostListen();$("hostGame").innerHTML=hostRulesHtml("werbinich")+wbiHostHtml();wbiBindHost();return;}
   if(modeName==="exwm"){
     $("hostGame").innerHTML=hostRulesHtml("exwm")+exwmHostHtml();
     exwmBind();
