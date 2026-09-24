@@ -272,7 +272,7 @@ window.addEventListener("error",function(e){
 </script>
 </head>
 <body>
-<header>🇭🇷 Kroatien-Olympiade LIVE <span style="font-size:12px;opacity:.78">NEUE VERSION · V6 · QUOTEN-KOMA FIX · 24.09.2026</span> <span style="font-size:12px;opacity:.78">ADRIA BEACH EDITION · COMPACT · Saufy-Nauten 2026</span> <span style="display:inline-block;margin-left:8px;padding:2px 7px;border-radius:6px;background:#fff;color:#087f9c;font-weight:900;font-size:12px;vertical-align:middle">V6 FIREBASE · WER BIN ICH?</span></header>
+<header>🇭🇷 Kroatien-Olympiade LIVE <span style="font-size:12px;opacity:.78">NEUE VERSION · V7 · QUOTEN-KOMA DIREKTSYNC · 24.09.2026</span> <span style="font-size:12px;opacity:.78">ADRIA BEACH EDITION · COMPACT · Saufy-Nauten 2026</span> <span style="display:inline-block;margin-left:8px;padding:2px 7px;border-radius:6px;background:#fff;color:#087f9c;font-weight:900;font-size:12px;vertical-align:middle">V7 FIREBASE · WER BIN ICH?</span></header>
 <div class="wrap">
 <section id="setup" class="card">
 <h2>Verbinden</h2>
@@ -1323,6 +1323,12 @@ function join(teamRole){
   fbRoomRef.child("meta/active").once("value").then(snap=>{
     if(snap.val()!==true){alert("Raumcode nicht aktiv. Bitte Code prüfen.");return;}
     conn=fbClientConn(); fbAttachClientListeners();
+    // V7: Kapitäne hören zusätzlich direkt auf den persistenten Quoten-Koma-State.
+    // Dadurch sehen sie die Quoten auch dann sofort, wenn ein Broadcast/Join-Paket verpasst wurde.
+    if(["team1","team2","team3"].includes(role)){
+      const qref=fbRoomRef.child("gameState/quotenkoma");
+      fbListen(qref,"value",snap=>{const v=snap.val();if(v&&v.state) qkClientRender(v);});
+    }
     const pk=fbKey(role);
     const pr=fbRoomRef.child("presence/"+pk);
     pr.set({role,online:true,ts:firebase.database.ServerValue.TIMESTAMP});
@@ -1332,6 +1338,10 @@ function join(teamRole){
     else{
       show("captainView");
       $("teamName").innerHTML="<b>"+D.teams[role].name+"</b>"+teamRosterHtml(role);
+      // Falls Quoten-Koma bereits aktiv ist, State nochmals direkt laden.
+      fbRoomRef.child("meta/currentMode").once("value").then(ms=>{
+        if(ms.val()==="quotenkoma") fbRoomRef.child("gameState/quotenkoma").once("value").then(qs=>{const v=qs.val();if(v&&v.state)qkClientRender(v);});
+      });
     }
   }).catch(e=>alert("Firebase-Verbindung fehlgeschlagen: "+e.message));
 }
@@ -1791,6 +1801,7 @@ function lockCaptain(msg){
 }
 function setMode(m){
   modeName=m; answers={};
+  if(fbRoomRef) try{fbRoomRef.child("meta/currentMode").set(m);}catch(e){}
   if(m==="doors") setTimeout(()=>doorBroadcast(),50);
   if(m==="zimmer"){
     ZG_PLAYERS.forEach(n=>zgSend(n,{type:"zgState",round:zgRound,phase:(zgOut.has(n)?"paired":"ready"),title:ZG_ROUNDS[zgRound].title,question:ZG_ROUNDS[zgRound].question}));
@@ -2839,7 +2850,10 @@ function qkBroadcast(){
   // So bekommen auch bereits verbundene Kapitäne die Ansicht sofort,
   // unabhängig davon, ob ihre Presence-Verbindung beim Host schon aufgebaut ist.
   const msg={type:"qkState",state:qkPublicState(),markets:QK_MARKETS};
-  if(fbRoomRef) try{fbSendBroadcast(msg);}catch(e){}
+  if(fbRoomRef){
+    try{fbRoomRef.child("gameState/quotenkoma").set({state:qkPublicState(),markets:QK_MARKETS,ts:firebase.database.ServerValue.TIMESTAMP});}catch(e){}
+    try{fbSendBroadcast(msg);}catch(e){}
+  }
   ["team1","team2","team3","screen"].forEach(qkSendTo);
 }
 function qkSubmit(team,bets){
