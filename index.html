@@ -1798,7 +1798,7 @@ function setMode(m){
   }
   if(m==="emoji" && !["idle","title","artist","done"].includes(emojiPhase)) resetEmojiRound();
   renderHost();
-  if(m==="quotenkoma") qkBroadcast();
+  if(m==="quotenkoma"){ qkBroadcast(); setTimeout(qkBroadcast,250); }
   if(m==="higherlower" && hl) hlBroadcast();
   if(m==="higherlowerteam" && hlt) hltBroadcast();
   if(m==="higherlowerbed" && hlb) hlbBroadcast();
@@ -2834,7 +2834,14 @@ function qkTeamForRole(roleKey){
  return ["team1","team2","team3"].includes(roleKey)?roleKey:null;
 }
 function qkSendTo(roleKey){const c=conns[roleKey];if(c)try{c.send({type:"qkState",state:qkPublicState(),markets:QK_MARKETS})}catch(e){}}
-function qkBroadcast(){["team1","team2","team3","screen"].forEach(qkSendTo);}
+function qkBroadcast(){
+  // Quoten-Koma immer über den gemeinsamen Firebase-Broadcast verteilen.
+  // So bekommen auch bereits verbundene Kapitäne die Ansicht sofort,
+  // unabhängig davon, ob ihre Presence-Verbindung beim Host schon aufgebaut ist.
+  const msg={type:"qkState",state:qkPublicState(),markets:QK_MARKETS};
+  if(fbRoomRef) try{fbSendBroadcast(msg);}catch(e){}
+  ["team1","team2","team3","screen"].forEach(qkSendTo);
+}
 function qkSubmit(team,bets){
  if(!qk.open||qk.finished||!["team1","team2","team3"].includes(team))return;
  if(!Array.isArray(bets)||!bets.length)return;
