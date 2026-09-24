@@ -2830,8 +2830,13 @@ function qkBalance(t){return 100-qkStake(t);}
 function qkPayout(t){return (qk.bets[t]||[]).reduce((a,b)=>a+(b.status==="win"?b.stake*b.odds:(b.status==="void"?b.stake:0)),0);}
 function qkFinal(t){return qk.finished?qkBalance(t)+qkPayout(t):qkBalance(t);}
 function qkPublicState(){return {open:qk.open,published:qk.published,bets:qk.bets,settled:qk.settled,finished:qk.finished,awards:qk.awards};}
+function qkTeamForRole(roleKey){
+ if(["team1","team2","team3"].includes(roleKey))return roleKey;
+ if((roleKey||"").startsWith("player:"))return TT_TEAMS[roleKey.slice(7)]||null;
+ return null;
+}
 function qkSendTo(roleKey){const c=conns[roleKey];if(c)try{c.send({type:"qkState",state:qkPublicState(),markets:QK_MARKETS})}catch(e){}}
-function qkBroadcast(){["team1","team2","team3","screen"].forEach(qkSendTo);}
+function qkBroadcast(){["team1","team2","team3","screen",...Object.keys(conns).filter(r=>r.startsWith("player:"))].forEach(qkSendTo);}
 function qkSubmit(team,bets){
  if(!qk.open||qk.finished||!["team1","team2","team3"].includes(team))return;
  if(!Array.isArray(bets)||!bets.length)return;
@@ -2864,7 +2869,7 @@ function qkHostHtml(){
  "<div class='card'><h2>⚖️ Märkte auswerten</h2><p class='muted'>Gewinnende Auswahl anklicken. Alle Wetten dieses Marktes werden automatisch abgerechnet. ↩️ macht eine Auswertung rückgängig.</p>"+(used.length?used.map(m=>"<div class='qk-market "+(m.boost?"qk-boost":"")+"'><h3>"+m.name+"</h3><div class='qk-odds'>"+m.o.map(o=>"<button class='qkSettle "+(qk.settled[m.id]===o[0]?"good":"secondary")+"' data-m='"+m.id+"' data-o='"+o[0]+"'>"+o[1]+"</button>").join("")+"<button class='qkUndo secondary' data-m='"+m.id+"'>↩️ Undo</button></div></div>").join(""):"<p>Noch keine Wetten abgegeben.</p>")+"</div>";
 }
 function qkClientRender(m){
- const state=m.state,markets=m.markets||QK_MARKETS; qk=Object.assign(qkDefault(),state); const team=(role||"").startsWith("team")?role:null;
+ const state=m.state,markets=m.markets||QK_MARKETS; qk=Object.assign(qkDefault(),state); const team=qkTeamForRole(role);
  if(role==="screen"){$("screenTitle").textContent="🎰 QUOTEN-KOMA";$('screenTimer').textContent="";$("screenStatus").innerHTML="<div class='qk-head'><h2>🎰 QUOTEN-KOMA</h2><div>🇩🇪 Deutschland – Niederlande 🇳🇱</div></div>"+(state.published||state.finished?qkBetsHtml(null,true):"<div class='card'><h2>🔒 Wettscheine noch geheim</h2><p>Die Tipps werden nach Wettschluss von Jan veröffentlicht.</p></div>")+qkRankHtml();return;}
  if(!team)return;
  qkSlip=qkSlip.filter(x=>!((state.bets[team]||[]).some(b=>b.market===x.market)));
@@ -2881,7 +2886,7 @@ function qkBindClient(){
  document.querySelectorAll(".qk-pick").forEach(b=>b.onclick=()=>{const mid=b.dataset.m,oid=b.dataset.o; qkSlip=qkSlip.filter(x=>x.market!==mid);qkSlip.push({market:mid,option:oid,stake:5});qkClientRender({state:qkPublicState(),markets:QK_MARKETS});});
  document.querySelectorAll(".qkStake").forEach(e=>e.onchange=()=>{const raw=Number(e.value)||1;let v=Math.max(1,Math.min(20,Math.round(raw)));if(raw>20)alert("Maximal 20 € pro Wette. Der Einsatz wurde auf 20 € reduziert.");qkSlip[+e.dataset.i].stake=v;e.value=v;});
  document.querySelectorAll(".qkRemove").forEach(b=>b.onclick=()=>{qkSlip.splice(+b.dataset.i,1);qkClientRender({state:qkPublicState(),markets:QK_MARKETS});});
- const sub=$("qkSubmit");if(sub)sub.onclick=()=>{document.querySelectorAll(".qkStake").forEach(e=>qkSlip[+e.dataset.i].stake=Math.max(1,Math.min(20,Math.round(Number(e.value)||1))));const total=qkSlip.reduce((a,x)=>a+x.stake,0);if(total>qkBalance(role)){alert("Nicht genug Guthaben. Verfügbar: "+qkMoney(qkBalance(role)));return;}if(!confirm("Diese "+qkSlip.length+" Einzelwetten verbindlich abgeben? Danach können sie nicht mehr geändert werden."))return;conn.send({type:"qkBet",team:role,bets:qkSlip});qkSlip=[];};
+ const sub=$("qkSubmit");if(sub)sub.onclick=()=>{document.querySelectorAll(".qkStake").forEach(e=>qkSlip[+e.dataset.i].stake=Math.max(1,Math.min(20,Math.round(Number(e.value)||1))));const total=qkSlip.reduce((a,x)=>a+x.stake,0);const myTeam=qkTeamForRole(role);if(total>qkBalance(myTeam)){alert("Nicht genug Guthaben. Verfügbar: "+qkMoney(qkBalance(myTeam)));return;}if(!confirm("Diese "+qkSlip.length+" Einzelwetten verbindlich abgeben? Danach können sie nicht mehr geändert werden."))return;conn.send({type:"qkBet",team:qkTeamForRole(role),bets:qkSlip});qkSlip=[];};
 }
 function qkBindHost(){
  const a=$("qkToggle");if(a)a.onclick=()=>{qk.open=!qk.open;if(qk.open)qk.published=false;qkSave();renderHost();};
